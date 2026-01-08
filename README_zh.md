@@ -5,13 +5,16 @@
 ![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat)
+![Release](https://img.shields.io/github/v/release/nerdneilsfield/llm-to-anthropic?style=flat&logo=github)
+![Docker Hub](https://img.shields.io/docker/v/nerdneilsfield/llm-to-anthropic?style=flat&logo=docker)
+![GHCR](https://img.shields.io/badge/ghcr.io-latest-blue?style=flat&logo=github)
 ![Issues](https://img.shields.io/github/issues/nerdneilsfield/llm-to-anthropic?style=flat)
 ![Forks](https://img.shields.io/github/forks/nerdneilsfield/llm-to-anthropic?style=flat)
 ![Stars](https://img.shields.io/github/stars/nerdneilsfield/llm-to-anthropic?style=flat)
 
 **一个灵活的 LLM API 代理，将各种 LLM 提供商转换为统一的 Anthropic 兼容格式**
 
-[快速开始](#快速开始) • [配置](#配置) • [API 文档](#api-参考) • [示例](#示例)
+[快速开始](#-快速开始) • [配置](#-配置) • [API 文档](#-api-参考) • [Docker](#-docker-和部署) • [示例](#-示例)
 
 </div>
 
@@ -32,6 +35,46 @@
 ## 🚀 快速开始
 
 ### 安装
+
+选择以下任一安装方式：
+
+#### 方式 1：下载预构建二进制（推荐）
+
+```bash
+# 下载适用于您平台的最新二进制文件
+# Linux AMD64
+wget https://github.com/nerdneilsfield/llm-to-anthropic/releases/latest/download/llm-to-anthropic-linux-amd64 -O llm-to-anthropic
+
+# macOS AMD64
+wget https://github.com/nerdneilsfield/llm-to-anthropic/releases/latest/download/llm-to-anthropic-darwin-amd64 -O llm-to-anthropic
+
+# Windows AMD64
+wget https://github.com/nerdneilsfield/llm-to-anthropic/releases/latest/download/llm-to-anthropic-windows-amd64.exe -O llm-to-anthropic.exe
+
+# 添加执行权限（Linux/macOS）
+chmod +x llm-to-anthropic
+
+# 运行
+./llm-to-anthropic serve
+```
+
+#### 方式 2：使用 Docker
+
+```bash
+# 拉取并运行镜像
+docker run -d \
+  -p 8082:8082 \
+  -v $(pwd)/config.toml:/app/config.toml \
+  nerdneilsfield/llm-to-anthropic:latest
+
+# 或使用 GitHub Container Registry
+docker run -d \
+  -p 8082:8082 \
+  -v $(pwd)/config.toml:/app/config.toml \
+  ghcr.io/nerdneilsfield/llm-to-anthropic:latest
+```
+
+#### 方式 3：从源码构建
 
 ```bash
 # 克隆仓库
@@ -76,6 +119,16 @@ curl -X POST http://localhost:8082/v1/messages \
     ]
   }'
 ```
+
+---
+
+## 🐳 Docker 和部署
+
+Docker 使用和部署指南：
+
+- 📦 [Docker 使用指南](DOCKER.md) - 使用 Docker 或 Docker Compose 运行
+- 🚀 [部署指南](DEPLOYMENT.md) - 发布流程、CI/CD、生产环境部署
+- 🔐 [安全最佳实践](#-安全最佳实践)
 
 ---
 
@@ -528,11 +581,29 @@ MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
 
 ---
 
+## 🔒 安全最佳实践
+
+1. **永远不要提交 API key** 到仓库
+2. **使用环境变量** 进行敏感配置
+3. **设置正确的文件权限** 对 config.toml（`chmod 600`）
+4. **在生产环境中使用 HTTPS**
+5. **保持镜像更新** 以获取安全补丁
+6. **定期审查依赖项** 查找漏洞
+7. **在提供商级别使用速率限制**
+8. **监控日志** 查找可疑活动
+9. **在反向代理中实现认证**（如果需要）
+10. **定期备份** 配置文件
+
+---
+
 ## 🤝 支持
 
 - 📖 [文档](CONFIGURATION_VALIDATION.md)
 - 🐛 [问题跟踪](https://github.com/nerdneilsfield/llm-to-anthropic/issues)
 - 💬 [讨论](https://github.com/nerdneilsfield/llm-to-anthropic/discussions)
+- 📦 [Releases](https://github.com/nerdneilsfield/llm-to-anthropic/releases)
+- 🐳 [Docker Hub](https://hub.docker.com/r/nerdneilsfield/llm-to-anthropic)
+- 📦 [GitHub Container Registry](https://github.com/nerdneilsfield/llm-to-anthropic/pkgs/container/llm-to-anthropic)
 
 ---
 

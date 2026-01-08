@@ -5,13 +5,16 @@
 ![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat)
 ![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat)
+![Release](https://img.shields.io/github/v/release/nerdneilsfield/llm-to-anthropic?style=flat&logo=github)
+![Docker Hub](https://img.shields.io/docker/v/nerdneilsfield/llm-to-anthropic?style=flat&logo=docker)
+![GHCR](https://img.shields.io/badge/ghcr.io-latest-blue?style=flat&logo=github)
 ![Issues](https://img.shields.io/github/issues/nerdneilsfield/llm-to-anthropic?style=flat)
 ![Forks](https://img.shields.io/github/forks/nerdneilsfield/llm-to-anthropic?style=flat)
 ![Stars](https://img.shields.io/github/stars/nerdneilsfield/llm-to-anthropic?style=flat)
 
 **A flexible LLM API proxy that translates various LLM providers into a unified Anthropic-compatible format**
 
-[Quick Start](#quick-start) • [Configuration](#configuration) • [API Docs](#api-reference) • [Examples](#examples)
+[Quick Start](#-quick-start) • [Configuration](#-configuration) • [API Docs](#-api-reference) • [Docker](#-docker--deployment) • [Examples](#-examples)
 
 </div>
 
@@ -32,6 +35,46 @@
 ## 🚀 Quick Start
 
 ### Installation
+
+Choose one of the following installation methods:
+
+#### Method 1: Download Pre-built Binary (Recommended)
+
+```bash
+# Download the latest binary for your platform
+# Linux AMD64
+wget https://github.com/nerdneilsfield/llm-to-anthropic/releases/latest/download/llm-to-anthropic-linux-amd64 -O llm-to-anthropic
+
+# macOS AMD64
+wget https://github.com/nerdneilsfield/llm-to-anthropic/releases/latest/download/llm-to-anthropic-darwin-amd64 -O llm-to-anthropic
+
+# Windows AMD64
+wget https://github.com/nerdneilsfield/llm-to-anthropic/releases/latest/download/llm-to-anthropic-windows-amd64.exe -O llm-to-anthropic.exe
+
+# Make executable (Linux/macOS)
+chmod +x llm-to-anthropic
+
+# Run
+./llm-to-anthropic serve
+```
+
+#### Method 2: Using Docker
+
+```bash
+# Pull and run the image
+docker run -d \
+  -p 8082:8082 \
+  -v $(pwd)/config.toml:/app/config.toml \
+  nerdneilsfield/llm-to-anthropic:latest
+
+# Or use GitHub Container Registry
+docker run -d \
+  -p 8082:8082 \
+  -v $(pwd)/config.toml:/app/config.toml \
+  ghcr.io/nerdneilsfield/llm-to-anthropic:latest
+```
+
+#### Method 3: Build from Source
 
 ```bash
 # Clone the repository
@@ -76,6 +119,16 @@ curl -X POST http://localhost:8082/v1/messages \
     ]
   }'
 ```
+
+---
+
+## 🐳 Docker & Deployment
+
+For Docker usage and deployment guides, see:
+
+- 📦 [Docker Usage Guide](DOCKER.md) - Run with Docker or Docker Compose
+- 🚀 [Deployment Guide](DEPLOYMENT.md) - Release process, CI/CD, production deployment
+- 🔐 [Security Best Practices](#-security-best-practices)
 
 ---
 
@@ -527,11 +580,29 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
+## 🔒 Security Best Practices
+
+1. **Never commit API keys** to your repository
+2. **Use environment variables** for sensitive configuration
+3. **Set proper file permissions** on config.toml (`chmod 600`)
+4. **Use HTTPS** in production environments
+5. **Keep images updated** to get security patches
+6. **Review dependencies** regularly for vulnerabilities
+7. **Use rate limiting** at the provider level
+8. **Monitor logs** for suspicious activity
+9. **Implement authentication** in reverse proxy if needed
+10. **Regular backups** of configuration files
+
+---
+
 ## 🤝 Support
 
 - 📖 [Documentation](CONFIGURATION_VALIDATION.md)
 - 🐛 [Issue Tracker](https://github.com/nerdneilsfield/llm-to-anthropic/issues)
 - 💬 [Discussions](https://github.com/nerdneilsfield/llm-to-anthropic/discussions)
+- 📦 [Releases](https://github.com/nerdneilsfield/llm-to-anthropic/releases)
+- 🐳 [Docker Hub](https://hub.docker.com/r/nerdneilsfield/llm-to-anthropic)
+- 📦 [GitHub Container Registry](https://github.com/nerdneilsfield/llm-to-anthropic/pkgs/container/llm-to-anthropic)
 
 ---
 
