@@ -1,7 +1,13 @@
 package server
 
 import (
+	openai "github.com/nerdneilsfield/llm-to-anthropic/pkg/provider/openai"
+	"encoding/json"
+	anthropic_provider "github.com/nerdneilsfield/llm-to-anthropic/pkg/provider/anthropic"
+	gemini "github.com/nerdneilsfield/llm-to-anthropic/pkg/provider/gemini"
+	translators "github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/translators"
 	"fmt"
+	"time"
 	"io"
 
 	"github.com/gofiber/fiber/v2"
@@ -20,14 +26,30 @@ type Server struct {
 	logger        *zap.Logger
 }
 
+
+// customErrorHandler is a custom error handler
+func customErrorHandler(c *fiber.Ctx, err error) error {
+	code := fiber.StatusInternalServerError
+	if e, ok := err.(*fiber.Error); ok {
+		code = e.Code
+	}
+
+	return c.Status(code).JSON(anthropic.ErrorResponse{
+		Type: "internal_error",
+		Error: &anthropic.Error{
+			Type:    "internal_error",
+			Message: err.Error(),
+		},
+	})
+}
 // NewServer creates a new HTTP server
 func NewServer(cfg *config.Config, logger *zap.Logger) *Server {
 	app := fiber.New(fiber.Config{
 		AppName:      "llm-api-proxy",
 		ServerHeader:  "llm-api-proxy",
-		ReadTimeout:   120,
-		WriteTimeout:  120,
-		IdleTimeout:   120,
+		ReadTimeout:   time.Duration(cfg.GetReadTimeout()) * time.Second,
+		WriteTimeout:  time.Duration(cfg.GetWriteTimeout()) * time.Second,
+		IdleTimeout:   120 * time.Second,
 		ErrorHandler:  customErrorHandler,
 	})
 
@@ -260,6 +282,12 @@ func (s *Server) handleStreamingMessage(c *fiber.Ctx, req *anthropic.MessageRequ
 }
 
 // handleModels handles the models listing endpoint
+
+// writeStreamError writes an error to the stream
+func (s *Server) writeStreamError(c *fiber.Ctx, err error) error {
+	fmt.Fprintf(c, "event: error\ndata: %s\n\n", err.Error())
+	return nil
+}
 func (s *Server) handleModels(c *fiber.Ctx) error {
 	models := s.modelManager.GetAvailableModels()
 	return c.JSON(anthropic.ModelsResponse{
@@ -267,70 +295,97 @@ func (s *Server) handleModels(c *fiber.Ctx) error {
 	})
 }
 
-// Helper methods (to be implemented with provider clients)
+
+
+// convertModelsToAnthropic converts proxy models to Anthropic format
+func convertModelsToAnthropic(models []proxy.Model) []anthropic.Model {
+	anthropicModels := make([]anthropic.Model, 0, len(models))
+	
+	for _, model := range models {
+		anthropicModels = append(anthropicModels, anthropic.Model{
+			ID:        model.ID,
+			Name:      model.Name,
+			MaxTokens: 0, // TODO: Get from provider if available
+			Type:      "model",
+			Display:    model.Name,
+			CreatedAt:  "",
+		})
+	}
+	
+	return anthropicModels
+}
+// Helper methods - implemented with provider clients
 func (s *Server) translateRequest(req *anthropic.MessageRequest, model *proxy.Model) (interface{}, error) {
-	// Implementation will use provider-specific translators
-	return nil, fmt.Errorf("not implemented")
+	switch model.Provider.Type {
+	case "openai":
+		return translators.TranslateAnthropicToOpenAI(req)
+	case "anthropic":
+		// Anthropic format - pass through
+		return req, nil
+	default:
+		return nil, fmt.Errorf("unsupported provider type: %s", model.Provider.Type)
+	}
 }
 
 func (s *Server) sendToProvider(model *proxy.Model, req interface{}, apiKey string) ([]byte, error) {
-	// Implementation will use provider clients
-	return nil, fmt.Errorf("not implemented")
+	client := s.getProviderClient(model.Provider)
+	
+	if apiKey != "" {
+		return client.SendRequest(model.Name, req, apiKey)
+	}
+	return client.SendRequest(model.Name, req)
 }
 
 func (s *Server) sendStreamToProvider(model *proxy.Model, req interface{}, apiKey string) (io.ReadCloser, error) {
-	// Implementation will use provider clients
-	return nil, fmt.Errorf("not implemented")
+	client := s.getProviderClient(model.Provider)
+	
+	if apiKey != "" {
+		return client.SendStream(model.Name, req, apiKey)
+	}
+	return client.SendStream(model.Name, req)
 }
 
 func (s *Server) translateResponse(model *proxy.Model, resp []byte) (*anthropic.MessageResponse, error) {
-	// Implementation will use provider-specific translators
-	return nil, fmt.Errorf("not implemented")
+	switch model.Provider.Type {
+	case "openai":
+		return translators.TranslateOpenAIToAnthropic(resp)
+	case "anthropic":
+		// Anthropic format - parse directly
+		var anthropicResp anthropic.MessageResponse
+		if err := json.Unmarshal(resp, &anthropicResp); err != nil {
+			return nil, err
+		}
+		return &anthropicResp, nil
+	default:
+		return nil, fmt.Errorf("unsupported provider type: %s", model.Provider.Type)
+	}
 }
 
 func (s *Server) translateStream(model *proxy.Model, stream io.Reader, w io.Writer) error {
-	// Implementation will use provider-specific translators
-	return fmt.Errorf("not implemented")
+	// Streaming translation (to be implemented)
+	return fmt.Errorf("streaming not implemented yet")
+}
+
+func (s *Server) getProviderClient(provider *config.Provider) proxy.ProviderClient {
+	switch provider.Type {
+	case "openai":
+		return openai.NewClient(provider)
+	case "anthropic":
+		return anthropic_provider.NewClient(provider)
+	case "gemini":
+		return gemini.NewClient(provider)
+	default:
+		// Return a dummy client that will error
+		return openai.NewClient(provider)
+	}
 }
 
 func (s *Server) handleProviderError(c *fiber.Ctx, err error) error {
-	// Implementation will handle provider errors
 	return c.Status(500).JSON(anthropic.ErrorResponse{
 		Type: "internal_error",
 		Error: &anthropic.Error{
 			Type:    "internal_error",
 			Message: err.Error(),
 		},
-	})
-}
-
-func (s *Server) writeStreamError(c *fiber.Ctx, err error) error {
-	return c.Status(500).SendString(fmt.Sprintf("error: %v", err))
-}
-
-func convertModelsToAnthropic(models []proxy.Model) []anthropic.Model {
-	anthropicModels := make([]anthropic.Model, 0, len(models))
-	for _, m := range models {
-		anthropicModels = append(anthropicModels, anthropic.Model{
-			ID:         m.ID,
-			Name:       m.ID,
-			MaxTokens:  8192, // Default, should be updated per model
-			Type:       "model",
-			Display:    m.Name,
-			CreatedAt:  "",
-		})
-	}
-	return anthropicModels
-}
-
-// customErrorHandler is a custom error handler
-func customErrorHandler(c *fiber.Ctx, err error) error {
-	code := fiber.StatusInternalServerError
-	if e, ok := err.(*fiber.Error); ok {
-		code = e.Code
-	}
-
-	return c.Status(code).JSON(fiber.Map{
-		"error": err.Error(),
 	})
 }

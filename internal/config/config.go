@@ -300,3 +300,13 @@ func (c *Config) GetHost() string {
 func (c *Config) GetPort() int {
 	return c.Server.Port
 }
+
+// GetReadTimeout returns server read timeout in seconds
+func (c *Config) GetReadTimeout() int {
+	return c.Server.ReadTimeout
+}
+
+// GetWriteTimeout returns server write timeout in seconds
+func (c *Config) GetWriteTimeout() int {
+	return c.Server.WriteTimeout
+}

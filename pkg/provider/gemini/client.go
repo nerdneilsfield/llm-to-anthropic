@@ -144,3 +144,19 @@ func (c *Client) SendStreamRequest(model string, req interface{}, apiKey ...stri
 	// We'll need to handle this differently
 	return nil, fmt.Errorf("streaming not implemented for fasthttp")
 }
+
+// GetProvider returns the provider configuration
+func (c *Client) GetProvider() config.Provider {
+	return *c.provider
+}
+
+// IsConfigured returns true if the provider is properly configured
+func (c *Client) IsConfigured() bool {
+	return c.provider.ParsedAPIKey != "" || c.provider.IsBypass
+}
+
+// SendStream sends a streaming request to Gemini
+func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io.ReadCloser, error) {
+	// TODO: Implement streaming
+	return nil, fmt.Errorf("streaming not implemented for fasthttp")
+}
