@@ -1,18 +1,43 @@
-# LLM to Anthropic Proxy
+# 🤖 LLM to Anthropic Proxy
 
-A flexible LLM API proxy that translates various LLM provider APIs (OpenAI, Google Gemini, Anthropic) into a unified Anthropic-compatible format.
+<div align="center">
 
-## Features
+![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat)
+![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat)
+![Issues](https://img.shields.io/github/issues/nerdneilsfield/llm-to-anthropic?style=flat)
+![Forks](https://img.shields.io/github/forks/nerdneilsfield/llm-to-anthropic?style=flat)
+![Stars](https://img.shields.io/github/stars/nerdneilsfield/llm-to-anthropic?style=flat)
 
-- **Multiple Providers**: Configure any number of LLM providers
-- **Flexible API Keys**: Support direct keys, environment variables, or bypass mode
-- **Model Mappings**: Map model names to provider/model combinations
-- **Claude Compatibility**: Use Claude model names (haiku, sonnet, opus) with any provider
-- **Client-side Keys**: Forward client API keys to providers (bypass mode)
+**A flexible LLM API proxy that translates various LLM providers into a unified Anthropic-compatible format**
 
-## Installation
+[Quick Start](#quick-start) • [Configuration](#configuration) • [API Docs](#api-reference) • [Examples](#examples)
+
+</div>
+
+---
+
+## ✨ Features
+
+- 🎯 **Multi-Provider Support** - Configure any number of LLM providers (OpenAI, Anthropic, Google Gemini, Ollama, etc.)
+- 🔑 **Flexible API Keys** - Support direct keys, environment variables, or bypass mode
+- 🔄 **Model Mappings** - Map simple names like `haiku` to any provider/model combination
+- 🚀 **Client-Side Keys** - Forward client API keys to providers (bypass mode)
+- ⚡ **High Performance** - Built with Fiber v2 and fasthttp for blazing speed
+- 🛡️ **Configuration Validation** - Validate all settings at startup with clear error messages
+- 📝 **Anthropic Compatible** - Drop-in replacement for Anthropic API
+
+---
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/nerdneilsfield/llm-to-anthropic.git
+cd llm-to-anthropic
+
 # Build from source
 go build -o llm-to-anthropic .
 
@@ -20,9 +45,43 @@ go build -o llm-to-anthropic .
 ./llm-to-anthropic serve
 ```
 
-## Configuration
+### Minimal Configuration
 
-Create a `config.toml` file:
+Create `config.toml`:
+
+```toml
+[server]
+host = "0.0.0.0"
+port = 8082
+
+[[providers]]
+name = "openai"
+type = "openai"
+api_base_url = "https://api.openai.com/v1"
+api_key = "env:OPENAI_API_KEY"
+models = ["gpt-4o", "gpt-4.1-mini"]
+```
+
+### Make Your First Request
+
+```bash
+curl -X POST http://localhost:8082/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-openai-api-key" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "max_tokens": 1024,
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'
+```
+
+---
+
+## 📖 Configuration
+
+### Basic Structure
 
 ```toml
 [server]
@@ -36,116 +95,146 @@ write_timeout = 120
 name = "openai"
 type = "openai"
 api_base_url = "https://api.openai.com/v1"
-api_key = "env:OPENAI_API_KEY"  # Read from environment variable
-models = [
-    "gpt-4.1-mini",
-    "gpt-4o",
-]
+api_key = "env:OPENAI_API_KEY"
+models = ["gpt-4o", "gpt-4.1-mini"]
 
 [[providers]]
 name = "ollama"
 type = "openai"
 api_base_url = "http://localhost:11434/v1"
-api_key = "bypass"  # Forward client key
-models = [
-    "llama3.2:1b",
-    "llama3.2:3b",
-]
-
-[[providers]]
-name = "anthropic"
-type = "anthropic"
-api_base_url = "https://api.anthropic.com"
-api_key = "sk-ant-xxx"  # Direct key
-models = [
-    "claude-haiku-4-20250514",
-    "claude-3-5-sonnet-20241022",
-]
+api_key = "bypass"
+models = ["llama3.2:3b", "llama3.2:7b"]
 
 # Model mappings
 [mappings]
-"haiku" = "ollama/llama3.2:1b"
-"sonnet" = "ollama/llama3.2:3b"
-"opus" = "ollama/llama3.2:7b"
+"haiku" = "ollama/llama3.2:3b"
+"sonnet" = "ollama/llama3.2:7b"
 ```
+
+<details>
+<summary><strong>🔧 Advanced Configuration Options</strong></summary>
 
 ### API Key Configuration
 
-Three modes supported:
+Three modes are supported:
 
-1. **Direct Key**: Write the API key directly in config
-   ```toml
-   api_key = "sk-xxx"
-   ```
+#### 1. Direct Key
+```toml
+api_key = "sk-xxxxxxxxxxxxxxxx"
+```
+Write the API key directly in the config file.
 
-2. **Environment Variable**: Read from environment variable
-   ```toml
-   api_key = "env:OPENAI_API_KEY"
-   ```
+#### 2. Environment Variable (Recommended)
+```toml
+api_key = "env:OPENAI_API_KEY"
+```
+Read from environment variable. The proxy will validate that the variable exists and is not empty at startup.
 
-3. **Bypass/Forward**: Forward client's X-API-Key header
-   ```toml
-   api_key = "bypass"  # or "forward"
-   ```
+#### 3. Bypass/Forward Mode
+```toml
+api_key = "bypass"  # or "forward"
+```
+Forward the client's `X-API-Key` header to the provider. Useful when you want clients to manage their own keys.
+
+### Provider Types
+
+| Type | Description | Example |
+|------|-------------|----------|
+| `openai` | OpenAI-compatible API | OpenAI, Azure, Ollama, DeepSeek |
+| `anthropic` | Anthropic API | Claude models |
+| `gemini` | Google Gemini API | Gemini models |
 
 ### Model Selection
 
-Use `provider/model` format:
+Use the `provider/model` format:
 
 ```bash
-# Use OpenAI
-curl -X POST /v1/messages \
-  -d '{"model": "openai/gpt-4o", ...}'
+# Direct provider/model specification
+curl -d '{"model": "openai/gpt-4o", ...}'
 
-# Use Ollama
-curl -X POST /v1/messages \
-  -d '{"model": "ollama/llama3.2:7b", ...}'
-
-# Use Anthropic
-curl -X POST /v1/messages \
-  -d '{"model": "anthropic/claude-sonnet-4-20250514", ...}'
+# Or use mappings
+curl -d '{"model": "haiku", ...}'  # Maps to "ollama/llama3.2:3b"
 ```
 
-Or use mappings:
+### Vertex AI Configuration
+
+For Google Vertex AI:
+
+```toml
+[[providers]]
+name = "vertex"
+type = "gemini"
+api_base_url = "https://us-central1-aiplatform.googleapis.com/v1"
+api_key = "bypass"
+use_vertex_auth = true
+vertex_project = "your-project-id"
+vertex_location = "us-central1"
+models = ["gemini-2.5-pro"]
+```
+
+### Configuration Validation
+
+The proxy validates all settings at startup:
 
 ```bash
-# Uses mapping "haiku" = "ollama/llama3.2:1b"
-curl -X POST /v1/messages \
-  -d '{"model": "haiku", ...}'
+# Example validation errors
+Failed to load configuration: invalid configuration: 
+  provider openai: environment variable 'OPENAI_API_KEY' is not set or is empty
+
+Failed to load configuration: invalid configuration: 
+  provider openai: models list is required and must not be empty
+
+Failed to load configuration: invalid configuration: 
+  mapping: alias 'test' references non-existent provider 'nonexistent'
 ```
 
-## Usage
+See [CONFIGURATION_VALIDATION.md](CONFIGURATION_VALIDATION.md) for complete validation rules.
 
-### Start Server
+</details>
 
-```bash
-# With default config
-llm-to-anthropic serve
+---
 
-# With custom config path
-CONFIG_PATH=/path/to/config.toml llm-to-anthropic serve
+## 📚 API Reference
 
-# Verbose logging
-llm-to-anthropic serve -v
-```
+### Health Check Endpoints
 
-### Health Check
+#### GET /health
+Basic health check.
 
 ```bash
 curl http://localhost:8082/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok"
+}
+```
+
+#### GET /health/ready
+Readiness check with provider status.
+
+```bash
 curl http://localhost:8082/health/ready
 ```
 
-### List Models
-
-```bash
-curl http://localhost:8082/v1/models
+**Response:**
+```json
+{
+  "status": "ready",
+  "providers": {
+    "openai": "configured",
+    "ollama": "configured"
+  },
+  "total_providers": 2,
+  "total_mappings": 2
+}
 ```
 
-## API Endpoints
+### Message Endpoint
 
-### POST /v1/messages
-
+#### POST /v1/messages
 Send messages using Anthropic API format.
 
 ```bash
@@ -161,6 +250,295 @@ curl -X POST http://localhost:8082/v1/messages \
   }'
 ```
 
-## License
+**Request Body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `model` | string | Yes | Model identifier (e.g., `openai/gpt-4o`) |
+| `max_tokens` | integer | Yes | Maximum tokens to generate |
+| `messages` | array | Yes | Array of message objects |
+| `stream` | boolean | No | Enable streaming (default: false) |
 
-MIT
+**Response:**
+```json
+{
+  "id": "msg_123",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Hello! How can I help you today?"
+    }
+  ],
+  "model": "openai/gpt-4o",
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 10,
+    "output_tokens": 20
+  }
+}
+```
+
+### Models Endpoint
+
+#### GET /v1/models
+List all available models.
+
+```bash
+curl http://localhost:8082/v1/models
+```
+
+**Response:**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "openai/gpt-4o",
+      "object": "model",
+      "created": 1234567890,
+      "owned_by": "openai"
+    },
+    {
+      "id": "ollama/llama3.2:3b",
+      "object": "model",
+      "created": 1234567890,
+      "owned_by": "ollama"
+    }
+  ]
+}
+```
+
+<details>
+<summary><strong>🔧 Advanced API Usage</strong></summary>
+
+### Streaming Responses
+
+Enable streaming by setting `stream: true`:
+
+```bash
+curl -X POST http://localhost:8082/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-api-key" \
+  -d '{
+    "model": "openai/gpt-4o",
+    "max_tokens": 1024,
+    "stream": true,
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'
+```
+
+The response will be sent as Server-Sent Events (SSE).
+
+### Error Responses
+
+All errors follow the Anthropic API error format:
+
+```json
+{
+  "type": "invalid_request_error",
+  "error": {
+    "type": "invalid_request_error",
+    "message": "model field is required"
+  }
+}
+```
+
+### Rate Limiting
+
+The proxy does not implement rate limiting. Rate limiting is handled by the upstream providers.
+
+### Authentication
+
+The proxy supports two authentication modes:
+
+1. **Server-Side**: API keys are configured in `config.toml`
+2. **Client-Side** (Bypass): Clients provide their own API keys via `X-API-Key` header
+
+In bypass mode, the `X-API-Key` header is forwarded to the provider.
+
+</details>
+
+---
+
+## 🎯 Examples
+
+<details>
+<summary><strong>📝 Example 1: Multiple Providers</strong></summary>
+
+```toml
+[[providers]]
+name = "openai"
+type = "openai"
+api_base_url = "https://api.openai.com/v1"
+api_key = "env:OPENAI_API_KEY"
+models = ["gpt-4o", "gpt-4.1-mini"]
+
+[[providers]]
+name = "anthropic"
+type = "anthropic"
+api_base_url = "https://api.anthropic.com"
+api_key = "env:ANTHROPIC_API_KEY"
+models = ["claude-3-5-sonnet-20241022", "claude-haiku-4-20250514"]
+
+[[providers]]
+name = "ollama"
+type = "openai"
+api_base_url = "http://localhost:11434/v1"
+api_key = "bypass"
+models = ["llama3.2:3b", "llama3.2:7b"]
+```
+
+```bash
+# Use OpenAI
+curl -d '{"model": "openai/gpt-4o", ...}'
+
+# Use Anthropic
+curl -d '{"model": "anthropic/claude-3-5-sonnet-20241022", ...}'
+
+# Use Ollama
+curl -d '{"model": "ollama/llama3.2:7b", ...}'
+```
+
+</details>
+
+<details>
+<summary><strong>📝 Example 2: Model Mappings</strong></summary>
+
+```toml
+[mappings]
+"haiku" = "ollama/llama3.2:1b"
+"sonnet" = "ollama/llama3.2:3b"
+"opus" = "ollama/llama3.2:7b"
+"claude" = "anthropic/claude-3-5-sonnet-20241022"
+"gpt" = "openai/gpt-4o"
+```
+
+```bash
+# Simple names
+curl -d '{"model": "haiku", ...}'   # Uses ollama/llama3.2:1b
+curl -d '{"model": "sonnet", ...}'  # Uses ollama/llama3.2:3b
+curl -d '{"model": "claude", ...}'  # Uses anthropic/claude-3-5-sonnet-20241022
+```
+
+</details>
+
+<details>
+<summary><strong>📝 Example 3: Custom OpenAI-Compatible API</strong></summary>
+
+```toml
+[[providers]]
+name = "deepseek"
+type = "openai"
+api_base_url = "https://api.deepseek.com/v1"
+api_key = "bypass"  # Let clients provide their own key
+models = ["deepseek-chat", "deepseek-coder"]
+```
+
+```bash
+curl -X POST http://localhost:8082/v1/messages \
+  -H "x-api-key: your-deepseek-api-key" \
+  -d '{"model": "deepseek/deepseek-chat", ...}'
+```
+
+</details>
+
+<details>
+<summary><strong>📝 Example 4: Local LLM with Ollama</strong></summary>
+
+```toml
+[[providers]]
+name = "local"
+type = "openai"
+api_base_url = "http://localhost:11434/v1"
+api_key = "bypass"
+models = ["llama3.2:1b", "llama3.2:3b", "llama3.2:7b"]
+
+[mappings]
+"fast" = "local/llama3.2:1b"
+"balanced" = "local/llama3.2:3b"
+"powerful" = "local/llama3.2:7b"
+```
+
+```bash
+# Use local LLM
+curl -d '{"model": "local/llama3.2:7b", ...}'
+curl -d '{"model": "powerful", ...}'  # Same as above
+```
+
+</details>
+
+---
+
+## 🛠️ Development
+
+### Build from Source
+
+```bash
+# Clone repository
+git clone https://github.com/nerdneilsfield/llm-to-anthropic.git
+cd llm-to-anthropic
+
+# Build
+go build -o llm-to-anthropic .
+
+# Run tests
+go test ./...
+
+# Run validation tests
+./test_validation.sh
+```
+
+### Project Structure
+
+```
+llm-to-anthropic/
+├── cmd/                # CLI commands
+│   ├── proxy/         # Proxy command
+│   └── root.go       # Root command
+├── internal/          # Internal packages
+│   ├── config/       # Configuration
+│   ├── server/       # HTTP server
+│   └── ...          # Other internal packages
+├── pkg/              # Public packages
+│   ├── provider/      # Provider clients
+│   ├── api/          # API handlers
+│   └── logger/       # Logging
+├── config.toml       # Configuration file
+├── README.md         # This file
+└── main.go           # Entry point
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (use conventional commits: `feat:`, `fix:`, `docs:`, etc.)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🤝 Support
+
+- 📖 [Documentation](CONFIGURATION_VALIDATION.md)
+- 🐛 [Issue Tracker](https://github.com/nerdneilsfield/llm-to-anthropic/issues)
+- 💬 [Discussions](https://github.com/nerdneilsfield/llm-to-anthropic/discussions)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by the community**
+
+[⬆ Back to Top](#-llm-to-anthropic-proxy)
+
+</div>
