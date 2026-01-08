@@ -13,12 +13,30 @@ import (
 	"go.uber.org/zap"
 )
 
-// Cmd represents the proxy command
+// Cmd represents the proxy command (deprecated, use serve)
 var Cmd = &cobra.Command{
 	Use:   "proxy",
-	Short: "Start LLM API proxy server",
-	Long:  `Start a proxy server that translates various LLM provider APIs (OpenAI, Google Gemini, Anthropic) into a unified Anthropic-compatible format.`,
+	Short: "Start LLM API proxy server (deprecated: use 'serve' instead)",
+	Long:  `Start a proxy server that translates various LLM provider APIs (OpenAI, Google Gemini, Anthropic) into a unified Anthropic-compatible format.
+
+This command is deprecated. Please use 'serve' instead.`,
 	Run:   runProxy,
+	Hidden: false,
+}
+
+// NewServeCmd creates a new serve command
+func NewServeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "serve",
+		Short: "Start LLM API proxy server",
+		Long:  `Start a proxy server that translates various LLM provider APIs (OpenAI, Google Gemini, Anthropic) into a unified Anthropic-compatible format.`,
+		Run:   runProxy,
+	}
+}
+
+// NewProxyCmd creates a new proxy command (alias for backward compatibility)
+func NewProxyCmd() *cobra.Command {
+	return Cmd
 }
 
 var (

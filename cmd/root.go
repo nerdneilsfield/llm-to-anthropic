@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	loggerPkg "github.com/nerdneilsfield/shlogin/pkg/logger"
+	"github.com/nerdneilsfield/llm-to-anthropic/cmd/proxy"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -15,8 +16,12 @@ var (
 
 func newRootCmd(version string, buildTime string, gitCommit string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "go-template",
-		Short: "go-template is a template for go projects.",
+		Use:   "llm-to-anthropic",
+		Short: "LLM API proxy with Anthropic compatibility",
+		Long: `LLM API proxy server that translates various LLM provider APIs 
+(OpenAI, Google Gemini, Anthropic) into a unified Anthropic-compatible format.
+
+Supports both server-side and client-side API key authentication.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -32,7 +37,11 @@ func newRootCmd(version string, buildTime string, gitCommit string) *cobra.Comma
 
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 
+	// Add subcommands
 	cmd.AddCommand(newVersionCmd(version, buildTime, gitCommit))
+	cmd.AddCommand(proxy.NewServeCmd())
+	cmd.AddCommand(proxy.NewProxyCmd()) // Alias for backward compatibility
+
 	return cmd
 }
 
