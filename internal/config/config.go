@@ -43,9 +43,16 @@ type Provider struct {
 // ModelMappings holds model alias mappings
 type ModelMappings map[string]string
 
+
 // Load loads configuration from TOML file
-func Load() (*Config, error) {
-	configPath := getConfigPath()
+// If configPath is provided, it will use that file
+// Otherwise, it will search for config.toml or .llm-to-anthropic.toml
+func Load(configPath string) (*Config, error) {
+	// If configPath is empty, use default path
+	if configPath == "" {
+		configPath = getConfigPath()
+	}
+	
 	configFile, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -71,7 +78,6 @@ func Load() (*Config, error) {
 
 	return cfg, nil
 }
-
 // ParseAPIKeys parses API keys for all providers
 func (c *Config) ParseAPIKeys() error {
 	for i := range c.Providers {

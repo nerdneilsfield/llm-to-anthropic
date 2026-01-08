@@ -47,9 +47,17 @@ func init() {
 	Cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 }
 
+
+// Get config path from args or use default
+func getConfigPath(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+	return ""
+}
 func runProxy(cmd *cobra.Command, args []string) {
 	// Load configuration
-	cfg, err := config.Load()
+	cfg, err := config.Load(getConfigPath(args))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
 		os.Exit(1)
