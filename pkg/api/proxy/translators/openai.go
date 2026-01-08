@@ -43,7 +43,7 @@ type OpenAIUsage struct {
 }
 
 // TranslateAnthropicToOpenAI converts Anthropic request to OpenAI format
-func TranslateAnthropicToOpenAI(req *anthropic.MessageRequest) (*OpenAIRequest, error) {
+func TranslateAnthropicToOpenAI(req *anthropic.MessageRequest, modelName string) (*OpenAIRequest, error) {
 	messages := make([]OpenAIMessage, 0, len(req.Messages))
 	
 	for _, msg := range req.Messages {
@@ -65,7 +65,7 @@ func TranslateAnthropicToOpenAI(req *anthropic.MessageRequest) (*OpenAIRequest, 
 	}
 	
 	return &OpenAIRequest{
-		Model:       req.Model,
+		Model:       modelName,
 		Messages:    messages,
 		MaxTokens:   req.MaxTokens,
 		Temperature: 0.7, // Default temperature

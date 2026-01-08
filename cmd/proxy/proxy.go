@@ -93,6 +93,7 @@ func runProxy(cmd *cobra.Command, args []string) {
 				zap.String("base_url", provider.BaseURL),
 				zap.Bool("bypass", provider.IsBypass),
 				zap.Int("models", len(provider.Models)),
+			zap.Bool("has_api_key", provider.ParsedAPIKey != ""),
 			)
 		}
 	}

@@ -318,7 +318,7 @@ func convertModelsToAnthropic(models []proxy.Model) []anthropic.Model {
 func (s *Server) translateRequest(req *anthropic.MessageRequest, model *proxy.Model) (interface{}, error) {
 	switch model.Provider.Type {
 	case "openai":
-		return translators.TranslateAnthropicToOpenAI(req)
+		return translators.TranslateAnthropicToOpenAI(req, model.Name)
 	case "anthropic":
 		// Anthropic format - pass through
 		return req, nil
