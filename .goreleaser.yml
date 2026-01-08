@@ -53,18 +53,17 @@ dockers_v2:
     dockerfile: Dockerfile.goreleaser
     ids:
       - llm-to-anthropic
-    image_templates:
+    images:
       - nerdneilsfield/llm-to-anthropic:{{ .Tag }}
       - nerdneilsfield/llm-to-anthropic:latest
       - ghcr.io/nerdneilsfield/llm-to-anthropic:{{ .Tag }}
       - ghcr.io/nerdneilsfield/llm-to-anthropic:latest
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--platform=linux/arm64"
     platforms:
       - linux/amd64
       - linux/arm64
+    extra_files:
+      - "config.toml"
+      - ".env.example"
     labels:
       "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/nerdneilsfield/llm-to-anthropic/master/README.md"
       "io.artifacthub.package.maintainers": "[{\"name\":\"dengqi\",\"email\":\"dengqqi935@gmail.com\"}]"
