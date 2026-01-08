@@ -1,0 +1,11 @@
+FROM alpine:3.20
+
+ARG TARGETPLATFORM
+
+RUN addgroup -S app && adduser -S app -G app
+USER app
+
+WORKDIR /app
+COPY ${TARGETPLATFORM}/go-template /app/go-template
+
+ENTRYPOINT ["/app/go-template"]
