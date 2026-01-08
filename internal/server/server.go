@@ -177,7 +177,7 @@ func (s *Server) handleMessages(c *fiber.Ctx) error {
 	// Log request (don't log API key)
 	s.logger.Info("Handling message request",
 		zap.String("model", req.Model),
-		zap.String("provider", string(model.Provider)),
+		zap.String("provider", model.Provider.Name),
 		zap.Bool("stream", req.Stream),
 		zap.Bool("has_api_key", apiKey != ""),
 	)
