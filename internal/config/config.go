@@ -146,6 +146,8 @@ func setDefaults(cfg *Config) {
 }
 
 // Validate validates the configuration
+
+// Validate validates configuration
 func (c *Config) Validate() error {
 	// Validate server configuration
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
@@ -171,6 +173,11 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("provider %s: api_base_url is required", provider.Name)
 		}
 
+		// Validate API key configuration
+		if err := c.validateProviderAPIKey(&provider); err != nil {
+			return err
+		}
+
 		// Validate vertex auth configuration
 		if provider.UseVertexAuth {
 			if provider.VertexProject == "" {
@@ -180,6 +187,77 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("provider %s: vertex_location is required when use_vertex_auth is true", provider.Name)
 			}
 		}
+
+		// Validate models list
+		if len(provider.Models) == 0 {
+			return fmt.Errorf("provider %s: models list is required and must not be empty", provider.Name)
+		}
+
+		// Validate each model name
+		for j, modelName := range provider.Models {
+			if modelName == "" {
+				return fmt.Errorf("provider %s: model %d: model name cannot be empty", provider.Name, j)
+			}
+		}
+	}
+
+	// Validate mappings
+	for alias, mapping := range c.Mappings {
+		if alias == "" {
+			return fmt.Errorf("mapping: alias cannot be empty")
+		}
+		if mapping == "" {
+			return fmt.Errorf("mapping: alias '%s' cannot map to empty string", alias)
+		}
+
+		// Validate mapping format (should be provider/model)
+		providerName, modelName := ParseModelMapping(mapping)
+		if providerName == "" {
+			return fmt.Errorf("mapping: alias '%s' maps to invalid format '%s' (expected 'provider/model')", alias, mapping)
+		}
+		if modelName == "" {
+			return fmt.Errorf("mapping: alias '%s' maps to invalid model name in '%s'", alias, mapping)
+		}
+
+		// Verify provider exists
+		if _, ok := c.GetProviderByName(providerName); !ok {
+			return fmt.Errorf("mapping: alias '%s' references non-existent provider '%s'", alias, providerName)
+		}
+	}
+
+	return nil
+}
+
+// validateProviderAPIKey validates a provider's API key configuration
+func (c *Config) validateProviderAPIKey(provider *Provider) error {
+	if provider.APIKey == "" {
+		return fmt.Errorf("provider %s: api_key is required", provider.Name)
+	}
+
+	// Check for bypass/forward mode
+	if provider.APIKey == "bypass" || provider.APIKey == "forward" {
+		return nil  // Bypass mode is valid
+	}
+
+	// Check for environment variable mode
+	if strings.HasPrefix(provider.APIKey, "env:") {
+		envKey := strings.TrimPrefix(provider.APIKey, "env:")
+		if envKey == "" {
+			return fmt.Errorf("provider %s: env: mode requires an environment variable name", provider.Name)
+		}
+
+		// Check if environment variable exists and is not empty
+		value := os.Getenv(envKey)
+		if value == "" {
+			return fmt.Errorf("provider %s: environment variable '%s' is not set or is empty", provider.Name, envKey)
+		}
+
+		return nil
+	}
+
+	// Direct key mode - check if it's not empty
+	if provider.APIKey == "" {
+		return fmt.Errorf("provider %s: api_key cannot be empty", provider.Name)
 	}
 
 	return nil
