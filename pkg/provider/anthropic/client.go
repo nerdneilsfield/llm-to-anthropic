@@ -39,7 +39,17 @@ func NewClient(cfg *config.Config) *Client {
 }
 
 // SendRequest sends a non-streaming request to Anthropic
-func (c *Client) SendRequest(model string, req interface{}) ([]byte, error) {
+// apiKey is optional - if provided, it overrides default API key
+func (c *Client) SendRequest(model string, req interface{}, apiKey ...string) ([]byte, error) {
+	key := c.apiKey
+	if len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	if key == "" {
+		return nil, fmt.Errorf("Anthropic API key not provided")
+	}
+
 	// For direct Anthropic proxy, we don't translate the request
 	// We just forward it as-is
 	reqBody, err := json.Marshal(req)
@@ -53,7 +63,7 @@ func (c *Client) SendRequest(model string, req interface{}) ([]byte, error) {
 	httpReq.SetRequestURI(BaseURL + MessagesEndpoint)
 	httpReq.Header.SetMethod("POST")
 	httpReq.Header.SetContentType("application/json")
-	httpReq.Header.Set("x-api-key", c.apiKey)
+	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 	httpReq.SetBody(reqBody)
 
@@ -82,7 +92,17 @@ func (c *Client) SendRequest(model string, req interface{}) ([]byte, error) {
 }
 
 // SendStream sends a streaming request to Anthropic
-func (c *Client) SendStream(model string, req interface{}) (io.ReadCloser, error) {
+// apiKey is optional - if provided, it overrides default API key
+func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io.ReadCloser, error) {
+	key := c.apiKey
+	if len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	if key == "" {
+		return nil, fmt.Errorf("Anthropic API key not provided")
+	}
+
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -94,7 +114,7 @@ func (c *Client) SendStream(model string, req interface{}) (io.ReadCloser, error
 	httpReq.SetRequestURI(BaseURL + MessagesEndpoint)
 	httpReq.Header.SetMethod("POST")
 	httpReq.Header.SetContentType("application/json")
-	httpReq.Header.Set("x-api-key", c.apiKey)
+	httpReq.Header.Set("x-api-key", key)
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.SetBody(reqBody)

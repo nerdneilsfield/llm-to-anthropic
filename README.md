@@ -7,17 +7,18 @@ A high-performance Go-based LLM API proxy that translates various LLM provider A
 - **Multiple Provider Support**: OpenAI, Google Gemini, and direct Anthropic API proxy
 - **Anthropic API Compatible**: Full compatibility with Anthropic's v1 messages API
 - **Streaming & Non-Streaming**: Full support for both streaming and non-streaming responses
-- **Model Mapping**: Flexible model mapping configuration (haiku/sonnet → provider-specific models)
+- **Model Mapping**: Flexible model mapping configuration (haiku/sonnet → provider models)
 - **High Performance**: Built on Fiber v2 and fasthttp for maximum throughput
 - **Easy Configuration**: Simple environment variable configuration
 - **Health Monitoring**: Built-in health check endpoints for orchestration systems
+- **Flexible Authentication**: Support for both server-side and client-side API key management
 
 ## Quick Start
 
 ### Prerequisites
 
 - Go 1.23.2 or later
-- API keys for at least one provider (OpenAI, Google Gemini, or Anthropic)
+- API keys for at least one provider (OpenAI, Google Gemini, or Anthropic) **OR** configure proxy to accept client-provided keys
 
 ### Installation
 
@@ -41,14 +42,64 @@ Create a `.env` file from the example:
 cp .env.example .env
 ```
 
-Edit `.env` with your API keys:
+#### Authentication Options
+
+**Option 1: Server-Side API Keys (Simplified)**
+
+Configure API keys in `.env` - the proxy will handle all authentication:
 
 ```dotenv
-# At least one API key is required
+# Configure API keys for each provider
 OPENAI_API_KEY=sk-...
 GEMINI_API_KEY=...
 ANTHROPIC_API_KEY=sk-ant-...
+```
 
+Then client requests don't need API keys:
+
+```bash
+curl http://localhost:8082/v1/models
+```
+
+**Option 2: Client-Side API Keys (Multi-Tenant/Flexible)**
+
+The proxy can forward API keys provided by clients. This is useful for:
+- Multi-tenant applications where each user has their own keys
+- Security (server never stores sensitive keys)
+- Flexibility (different requests can use different keys)
+
+Client provides API key via `X-Api-Key` header:
+
+```bash
+# Using OpenAI key
+curl http://localhost:8082/v1/models \
+  -H "X-Api-Key: sk-your-openai-key"
+
+# Using Gemini key
+curl http://localhost:8082/v1/models \
+  -H "X-Api-Key: AIza-your-gemini-key"
+
+# Using Anthropic key
+curl http://localhost:8082/v1/models \
+  -H "X-Api-Key: sk-ant-your-anthropic-key"
+```
+
+**How it works:**
+- Client sends `X-Api-Key: <key>` header
+- Proxy detects which provider the key is for (or uses model prefix)
+- Proxy converts to provider format:
+  - OpenAI: `Authorization: Bearer <key>`
+  - Gemini: `?key=<key>` or Vertex AI ADC
+  - Anthropic: `x-api-key: <key>`
+- Proxy forwards request with converted header
+
+**You can combine both approaches:**
+- Server-side keys serve as fallback when client doesn't provide one
+- Client-side keys override server defaults when provided
+
+Edit `.env` with your configuration:
+
+```dotenv
 # Provider Configuration
 PREFERRED_PROVIDER=openai  # or "google", "anthropic"
 
@@ -114,9 +165,9 @@ You can also use explicit model names with provider prefixes:
 
 | Variable | Required | Description |
 |----------|-----------|-------------|
-| `OPENAI_API_KEY` | No | OpenAI API key |
-| `GEMINI_API_KEY` | No | Google Gemini API key |
-| `ANTHROPIC_API_KEY` | No | Anthropic API key |
+| `OPENAI_API_KEY` | No | OpenAI API key (default/fallback, can be provided by client) |
+| `GEMINI_API_KEY` | No | Google Gemini API key (default/fallback, can be provided by client) |
+| `ANTHROPIC_API_KEY` | No | Anthropic API key (default/fallback, can be provided by client) |
 | `USE_VERTEX_AUTH` | No | Use Vertex AI ADC instead of API key (default: false) |
 | `VERTEX_PROJECT` | No | Google Cloud Project ID (required with Vertex auth) |
 | `VERTEX_LOCATION` | No | Google Cloud region (required with Vertex auth) |
@@ -126,6 +177,26 @@ You can also use explicit model names with provider prefixes:
 | `SERVER_HOST` | No | Server host (default: 0.0.0.0) |
 | `SERVER_PORT` | No | Server port (default: 8082) |
 | `VERBOSE` | No | Enable verbose logging (default: false) |
+
+### Client Authentication
+
+Clients can authenticate in two ways:
+
+1. **Server-Side Keys**: Configure API keys in `.env`, clients don't need to provide keys
+2. **Client-Side Keys**: Provide API key via `X-Api-Key` header, supports per-request keys
+
+Example with client-provided key:
+
+```bash
+curl http://localhost:8082/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: sk-ant-your-key" \
+  -d '{
+    "model": "sonnet",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
 
 ### Supported Providers
 

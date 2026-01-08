@@ -9,7 +9,8 @@ import (
 
 // Config holds the application configuration loaded from environment variables
 type Config struct {
-	// API Keys
+	// API Keys (optional, can be provided by client)
+	// If not provided, client must supply X-Api-Key header
 	AnthropicAPIKey string `envconfig:"ANTHROPIC_API_KEY" required:"false"`
 	OpenAIKey      string `envconfig:"OPENAI_API_KEY" required:"false"`
 	GeminiAPIKey   string `envconfig:"GEMINI_API_KEY" required:"false"`

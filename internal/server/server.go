@@ -132,6 +132,12 @@ func (s *Server) handleReady(c *fiber.Ctx) error {
 
 // handleMessages handles the Anthropic v1 messages endpoint
 func (s *Server) handleMessages(c *fiber.Ctx) error {
+	// Extract API key from request header (supports both formats)
+	apiKey := c.Get("X-Api-Key")
+	if apiKey == "" {
+		apiKey = c.Get("x-api-key")
+	}
+
 	// Parse request
 	var req anthropic.MessageRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -189,23 +195,24 @@ func (s *Server) handleMessages(c *fiber.Ctx) error {
 		})
 	}
 
-	// Log request
+	// Log request (don't log API key)
 	s.logger.Info("Handling message request",
 		zap.String("model", req.Model),
 		zap.String("provider", string(model.Provider)),
 		zap.Bool("stream", req.Stream),
+		zap.Bool("has_api_key", apiKey != ""),
 	)
 
 	// Handle streaming vs non-streaming
 	if req.Stream {
-		return s.handleStreamingMessage(c, &req, model)
+		return s.handleStreamingMessage(c, &req, model, apiKey)
 	}
 
-	return s.handleNonStreamingMessage(c, &req, model)
+	return s.handleNonStreamingMessage(c, &req, model, apiKey)
 }
 
 // handleNonStreamingMessage handles non-streaming message requests
-func (s *Server) handleNonStreamingMessage(c *fiber.Ctx, req *anthropic.MessageRequest, model *proxy.Model) error {
+func (s *Server) handleNonStreamingMessage(c *fiber.Ctx, req *anthropic.MessageRequest, model *proxy.Model, apiKey string) error {
 	// Translate request to provider format
 	providerReq, err := s.translateRequest(req, model)
 	if err != nil {
@@ -219,8 +226,8 @@ func (s *Server) handleNonStreamingMessage(c *fiber.Ctx, req *anthropic.MessageR
 		})
 	}
 
-	// Send request to provider
-	resp, err := s.sendToProvider(model, providerReq)
+	// Send request to provider with API key
+	resp, err := s.sendToProvider(model, providerReq, apiKey)
 	if err != nil {
 		s.logger.Error("Provider request failed", zap.Error(err))
 		return s.handleProviderError(c, err)
@@ -243,7 +250,7 @@ func (s *Server) handleNonStreamingMessage(c *fiber.Ctx, req *anthropic.MessageR
 }
 
 // handleStreamingMessage handles streaming message requests
-func (s *Server) handleStreamingMessage(c *fiber.Ctx, req *anthropic.MessageRequest, model *proxy.Model) error {
+func (s *Server) handleStreamingMessage(c *fiber.Ctx, req *anthropic.MessageRequest, model *proxy.Model, apiKey string) error {
 	// Set SSE headers
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
@@ -256,8 +263,8 @@ func (s *Server) handleStreamingMessage(c *fiber.Ctx, req *anthropic.MessageRequ
 		return s.writeStreamError(c, err)
 	}
 
-	// Send streaming request to provider
-	stream, err := s.sendStreamToProvider(model, providerReq)
+	// Send streaming request to provider with API key
+	stream, err := s.sendStreamToProvider(model, providerReq, apiKey)
 	if err != nil {
 		s.logger.Error("Provider stream request failed", zap.Error(err))
 		return s.writeStreamError(c, err)
@@ -287,12 +294,12 @@ func (s *Server) translateRequest(req *anthropic.MessageRequest, model *proxy.Mo
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *Server) sendToProvider(model *proxy.Model, req interface{}) ([]byte, error) {
+func (s *Server) sendToProvider(model *proxy.Model, req interface{}, apiKey string) ([]byte, error) {
 	// Implementation will use provider clients
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *Server) sendStreamToProvider(model *proxy.Model, req interface{}) (io.ReadCloser, error) {
+func (s *Server) sendStreamToProvider(model *proxy.Model, req interface{}, apiKey string) (io.ReadCloser, error) {
 	// Implementation will use provider clients
 	return nil, fmt.Errorf("not implemented")
 }

@@ -45,8 +45,14 @@ func NewClient(cfg *config.Config) *Client {
 }
 
 // SendRequest sends a non-streaming request to Gemini
-func (c *Client) SendRequest(model string, req interface{}) ([]byte, error) {
-	endpoint := c.getEndpoint(model)
+// apiKey is optional - if provided, it overrides default API key
+func (c *Client) SendRequest(model string, req interface{}, apiKey ...string) ([]byte, error) {
+	key := c.apiKey
+	if len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	endpoint := c.getEndpoint(model, key)
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -58,14 +64,6 @@ func (c *Client) SendRequest(model string, req interface{}) ([]byte, error) {
 	httpReq.SetRequestURI(endpoint)
 	httpReq.Header.SetMethod("POST")
 	httpReq.Header.SetContentType("application/json")
-
-	if c.useVertexAuth {
-		// For Vertex AI, authentication is handled via ADC
-		// The client should have proper credentials configured
-	} else {
-		// For API key authentication, add key to URL
-		httpReq.SetRequestURI(endpoint + "?key=" + c.apiKey)
-	}
 
 	httpReq.SetBody(reqBody)
 
@@ -94,8 +92,18 @@ func (c *Client) SendRequest(model string, req interface{}) ([]byte, error) {
 }
 
 // SendStream sends a streaming request to Gemini
-func (c *Client) SendStream(model string, req interface{}) (io.ReadCloser, error) {
-	endpoint := c.getEndpoint(model)
+// apiKey is optional - if provided, it overrides default API key
+func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io.ReadCloser, error) {
+	key := c.apiKey
+	if len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	if !c.useVertexAuth && key == "" {
+		return nil, fmt.Errorf("Gemini API key not provided")
+	}
+
+	endpoint := c.getEndpoint(model, key)
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -107,13 +115,6 @@ func (c *Client) SendStream(model string, req interface{}) (io.ReadCloser, error
 	httpReq.SetRequestURI(endpoint)
 	httpReq.Header.SetMethod("POST")
 	httpReq.Header.SetContentType("application/json")
-
-	if c.useVertexAuth {
-		// For Vertex AI, authentication is handled via ADC
-	} else {
-		// For API key authentication, add key to URL
-		httpReq.SetRequestURI(endpoint + "?key=" + c.apiKey)
-	}
 
 	httpReq.SetBody(reqBody)
 
@@ -137,15 +138,15 @@ func (c *Client) SendStream(model string, req interface{}) (io.ReadCloser, error
 	return &streamReader{resp: httpResp}, nil
 }
 
-// getEndpoint returns the endpoint URL for a given model
-func (c *Client) getEndpoint(model string) string {
+// getEndpoint returns the endpoint URL for a given model and API key
+func (c *Client) getEndpoint(model string, apiKey string) string {
 	if c.useVertexAuth {
-		// Vertex AI endpoint format
+		// Vertex AI endpoint format (uses ADC, not API key)
 		return fmt.Sprintf("https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent",
 			c.vertexLocation, c.vertexProject, c.vertexLocation, model)
 	}
-	// Standard Gemini API endpoint format
-	return fmt.Sprintf("%s/%s", BaseURL, fmt.Sprintf(GenerateContentEndpoint, model))
+	// Standard Gemini API endpoint format - add key to URL
+	return fmt.Sprintf("%s/%s?key=%s", BaseURL, fmt.Sprintf(GenerateContentEndpoint, model), apiKey)
 }
 
 // GetProvider returns the provider type
