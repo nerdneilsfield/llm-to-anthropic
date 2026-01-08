@@ -65,7 +65,22 @@ chmod +x llm-to-anthropic
 ./llm-to-anthropic serve
 ```
 
-#### 方式 2：使用 Docker
+
+#### 方式 2：使用 Go Install
+
+```bash
+# 直接从 GitHub 安装
+go install github.com/nerdneilsfield/llm-to-anthropic@latest
+
+# 二进制文件将安装到 $GOPATH/bin
+# 如果尚未添加，请将 $GOPATH/bin 添加到您的 PATH
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# 运行
+llm-to-anthropic serve
+```
+
+#### 方式 3：使用 Docker
 
 ```bash
 # 拉取并运行镜像
@@ -81,7 +96,8 @@ docker run -d \
   ghcr.io/nerdneilsfield/llm-to-anthropic:latest
 ```
 
-#### 方式 3：从源码构建
+#### 方式 4：从源码构建
+
 
 ```bash
 # 克隆仓库

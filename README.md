@@ -65,10 +65,25 @@ chmod +x llm-to-anthropic
 ./llm-to-anthropic serve
 ```
 
-#### Method 2: Using Docker
+
+#### Method 2: Using Go Install
 
 ```bash
-# Pull and run the image
+# Install directly from GitHub
+go install github.com/nerdneilsfield/llm-to-anthropic@latest
+
+# The binary will be installed to $GOPATH/bin
+# Add $GOPATH/bin to your PATH if not already added
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# Run
+llm-to-anthropic serve
+```
+
+#### Method 3: Using Docker
+
+```bash
+# Pull and run image
 docker run -d \
   -p 8082:8082 \
   -v $(pwd)/config.toml:/app/config.toml \
@@ -81,7 +96,8 @@ docker run -d \
   ghcr.io/nerdneilsfield/llm-to-anthropic:latest
 ```
 
-#### Method 3: Build from Source
+#### Method 4: Build from Source
+
 
 ```bash
 # Clone the repository
