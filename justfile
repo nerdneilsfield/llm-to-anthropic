@@ -1,52 +1,56 @@
-projectname := "go-template"
+projectname := "llm-to-anthropic"
 
-# 列出所有可用的命令
+# List all available commands
 default:
     @just --list
 
-# 构建 Golang 二进制文件
+# Build Golang binary
 build:
     go build -ldflags "-X main.version=$(git describe --abbrev=0 --tags)" -o {{projectname}}
 
-# 安装 Golang 二进制文件
+# Install Golang binary
 install:
     go install -ldflags "-X main.version=$(git describe --abbrev=0 --tags)"
 
-# 运行应用程序
+# Run application
 run:
     go run -ldflags "-X main.version=$(git describe --abbrev=0 --tags)" main.go
 
-# 安装构建依赖
+# Install build dependencies
 bootstrap:
     go generate -tags tools tools/tools.go
 
-# 运行测试并显示覆盖率
+# Run tests with coverage
 test: clean
     go test --cover -parallel=1 -v -coverprofile=coverage.out ./...
     go tool cover -func=coverage.out | sort -rnk3
 
-# 清理环境
+# Clean build artifacts
 clean:
     rm -rf coverage.out dist {{projectname}} {{projectname}}.exe
 
-# 显示测试覆盖率
+# Show test coverage
 cover:
     go test -v -race $(go list ./... | grep -v /vendor/) -v -coverprofile=coverage.out
     go tool cover -func=coverage.out
 
-# 格式化 Go 文件
+# Format Go files
 fmt:
     gofumpt -w .
     gci write .
 
-# 运行 linter
+# Run linter
 lint:
     golangci-lint run -c .golang-ci.yml
 
-# 测试发布
+# Test release
 release-test:
     goreleaser release  --snapshot --clean
 
-# 运行 pre-commit 钩子（已注释）
+# Run pre-commit hooks (commented out)
 # pre-commit:
 #     pre-commit run --all-files
+
+# Build for all platforms
+build-all:
+    goreleaser build --snapshot --clean

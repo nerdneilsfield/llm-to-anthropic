@@ -7,9 +7,9 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/nerdneilsfield/go-template/internal/config"
-	"github.com/nerdneilsfield/go-template/internal/server"
-	loggerPkg "github.com/nerdneilsfield/go-template/pkg/logger"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/server"
+	loggerPkg "github.com/nerdneilsfield/llm-to-anthropic/pkg/logger"
 	"go.uber.org/zap"
 )
 
@@ -22,12 +22,10 @@ var Cmd = &cobra.Command{
 }
 
 var (
-	cfgFile string
 	verbose bool
 )
 
 func init() {
-	Cmd.Flags().StringVarP(&cfgFile, "config", "c", "", "config file (default is .env in current directory)")
 	Cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 }
 
@@ -41,11 +39,11 @@ func runProxy(cmd *cobra.Command, args []string) {
 
 	// Override with command line flags
 	if verbose {
-		cfg.Verbose = true
+		cfg.General.Verbose = true
 	}
 
 	// Initialize logger
-	logger, err := loggerPkg.GetLogger(cfg.Verbose)
+	logger, err := loggerPkg.GetLogger(cfg.Verbose())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
@@ -54,19 +52,19 @@ func runProxy(cmd *cobra.Command, args []string) {
 
 	// Log configuration
 	logger.Info("Starting LLM API proxy",
-		zap.String("provider", string(cfg.PreferredProvider)),
-		zap.Int("port", cfg.ServerPort),
-		zap.Bool("verbose", cfg.Verbose),
+		zap.String("provider", string(cfg.General.PreferredProvider)),
+		zap.Int("port", cfg.ServerPort()),
+		zap.Bool("verbose", cfg.Verbose()),
 	)
 
-	if cfg.Verbose {
+	if cfg.Verbose() {
 		logger.Debug("Configuration loaded",
-			zap.String("preferred_provider", string(cfg.PreferredProvider)),
-			zap.String("big_model", cfg.BigModel),
-			zap.String("small_model", cfg.SmallModel),
-			zap.Bool("use_vertex_auth", cfg.UseVertexAuth),
-			zap.String("vertex_project", cfg.VertexProject),
-			zap.String("vertex_location", cfg.VertexLocation),
+			zap.String("preferred_provider", string(cfg.General.PreferredProvider)),
+			zap.String("big_model", cfg.Models.BigModel),
+			zap.String("small_model", cfg.Models.SmallModel),
+			zap.Bool("use_vertex_auth", cfg.Google.UseVertexAuth),
+			zap.String("vertex_project", cfg.Google.VertexProject),
+			zap.String("vertex_location", cfg.Google.VertexLocation),
 			zap.Bool("openai_configured", cfg.OpenAIKey != ""),
 			zap.Bool("gemini_configured", cfg.GeminiAPIKey != ""),
 			zap.Bool("anthropic_configured", cfg.AnthropicAPIKey != ""),

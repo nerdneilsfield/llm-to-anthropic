@@ -17,7 +17,7 @@ func newVersionCmd(version string, buildTime string, gitCommit string) *cobra.Co
 			fmt.Println("go-template")
 			fmt.Println("A template for go projects.")
 			fmt.Println("Author: dengqi935@gmail.com")
-			fmt.Println("Github: https://github.com/nerdneilsfield/go-template")
+			fmt.Println("Github: https://github.com/nerdneilsfield/llm-to-anthropic")
 			fmt.Fprintf(cmd.OutOrStdout(), "go-template: %s\n", version)
 			fmt.Fprintf(cmd.OutOrStdout(), "buildTime: %s\n", buildTime)
 			fmt.Fprintf(cmd.OutOrStdout(), "gitCommit: %s\n", gitCommit)

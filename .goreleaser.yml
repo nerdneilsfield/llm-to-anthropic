@@ -9,8 +9,8 @@ env:
 
 builds:
   -
-    id: go-template
-    binary: go-template
+    id: llm-to-anthropic
+    binary: llm-to-anthropic
     flags:
       - -trimpath
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -39,26 +39,26 @@ builds:
 archives:
   -
     builds:
-      - go-template
+      - llm-to-anthropic
     format_overrides:
       - goos: windows
         format: zip
     # files:
-    #   - "config_example.toml"
+    #   - "config.toml"
 
 release:
   github:
     owner: nerdneilsfield
-    name: go-template
+    name: llm-to-anthropic
 
 dockers_v2:
-  - id: go-template
+  - id: llm-to-anthropic
     dockerfile: Dockerfile.goreleaser
     ids:
-      - go-template
+      - llm-to-anthropic
     images:
-      - nerdneils/go-template
-      - ghcr.io/nerdneilsfield/go-template
+      - nerdneils/llm-to-anthropic
+      - ghcr.io/nerdneilsfield/llm-to-anthropic
     tags:
       - "{{ .Tag }}"
       - "{{ if not .IsNightly }}latest{{ end }}"
@@ -66,10 +66,10 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
     labels:
-      "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/nerdneilsfield/go-template/master/README.md"
+      "io.artifacthub.package.readme-url": "https://raw.githubusercontent.com/nerdneilsfield/llm-to-anthropic/master/README.md"
       "io.artifacthub.package.maintainers": "[{\"name\":\"dengqqi\",\"email\":\"dengqqi935@gmail.com\"}]"
       "io.artifacthub.package.license": "MIT"
-      "org.opencontainers.image.description": "Go template application."
+      "org.opencontainers.image.description": "LLM API proxy with Anthropic compatibility."
       "org.opencontainers.image.created": "{{ .Date }}"
       "org.opencontainers.image.name": "{{ .ProjectName }}"
       "org.opencontainers.image.revision": "{{ .FullCommit }}"

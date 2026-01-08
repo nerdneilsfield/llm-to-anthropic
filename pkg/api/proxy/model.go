@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nerdneilsfield/go-template/internal/config"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy/openai"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy/gemini"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/openai"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/gemini"
 )
 
 const (
@@ -65,16 +65,16 @@ func (m *ModelManager) ParseModel(modelStr string) (*Model, error) {
 		providerModel := m.getProviderSmallModel()
 		return &Model{
 			ID:       providerModel,
-			Provider: m.cfg.PreferredProvider,
-			Name:     strings.TrimPrefix(providerModel, m.cfg.PreferredProvider.GetPrefix()),
+			Provider: m.cfg.General.PreferredProvider,
+			Name:     strings.TrimPrefix(providerModel, m.cfg.General.PreferredProvider.GetPrefix()),
 		}, nil
 
 	case AnthropicModelSonnet:
 		providerModel := m.getProviderBigModel()
 		return &Model{
 			ID:       providerModel,
-			Provider: m.cfg.PreferredProvider,
-			Name:     strings.TrimPrefix(providerModel, m.cfg.PreferredProvider.GetPrefix()),
+			Provider: m.cfg.General.PreferredProvider,
+			Name:     strings.TrimPrefix(providerModel, m.cfg.General.PreferredProvider.GetPrefix()),
 		}, nil
 	}
 
@@ -97,40 +97,40 @@ func (m *ModelManager) ParseModel(modelStr string) (*Model, error) {
 
 	// Default to preferred provider
 	return &Model{
-		ID:       m.cfg.PreferredProvider.GetPrefix() + modelStr,
-		Provider: m.cfg.PreferredProvider,
+		ID:       m.cfg.General.PreferredProvider.GetPrefix() + modelStr,
+		Provider: m.cfg.General.PreferredProvider,
 		Name:     modelStr,
 	}, nil
 }
 
 // getProviderBigModel returns the configured big model with provider prefix
 func (m *ModelManager) getProviderBigModel() string {
-	if m.cfg.BigModel != "" {
+	if m.cfg.Models.BigModel != "" {
 		// If it already has a prefix, use as-is
-		if strings.Contains(m.cfg.BigModel, "/") {
-			return m.cfg.BigModel
+		if strings.Contains(m.cfg.Models.BigModel, "/") {
+			return m.cfg.Models.BigModel
 		}
 		// Otherwise, add the preferred provider's prefix
-		return m.cfg.PreferredProvider.GetPrefix() + m.cfg.BigModel
+		return m.cfg.General.PreferredProvider.GetPrefix() + m.cfg.Models.BigModel
 	}
 	// Use default for preferred provider
-	defaultModel := m.cfg.PreferredProvider.GetDefaultBigModel()
-	return m.cfg.PreferredProvider.GetPrefix() + defaultModel
+	defaultModel := m.cfg.General.PreferredProvider.GetDefaultBigModel()
+	return m.cfg.General.PreferredProvider.GetPrefix() + defaultModel
 }
 
 // getProviderSmallModel returns the configured small model with provider prefix
 func (m *ModelManager) getProviderSmallModel() string {
-	if m.cfg.SmallModel != "" {
+	if m.cfg.Models.SmallModel != "" {
 		// If it already has a prefix, use as-is
-		if strings.Contains(m.cfg.SmallModel, "/") {
-			return m.cfg.SmallModel
+		if strings.Contains(m.cfg.Models.SmallModel, "/") {
+			return m.cfg.Models.SmallModel
 		}
 		// Otherwise, add the preferred provider's prefix
-		return m.cfg.PreferredProvider.GetPrefix() + m.cfg.SmallModel
+		return m.cfg.General.PreferredProvider.GetPrefix() + m.cfg.Models.SmallModel
 	}
 	// Use default for preferred provider
-	defaultModel := m.cfg.PreferredProvider.GetDefaultSmallModel()
-	return m.cfg.PreferredProvider.GetPrefix() + defaultModel
+	defaultModel := m.cfg.General.PreferredProvider.GetDefaultSmallModel()
+	return m.cfg.General.PreferredProvider.GetPrefix() + defaultModel
 }
 
 // GetAvailableModels returns all available models
@@ -163,7 +163,7 @@ func (m *ModelManager) GetAvailableModels() []Model {
 	}
 
 	// Add Gemini models
-	if m.cfg.GeminiAPIKey != "" || m.cfg.UseVertexAuth {
+	if m.cfg.GeminiAPIKey != "" || m.cfg.Google.UseVertexAuth {
 		for _, model := range gemini.SupportedModels {
 			models = append(models, Model{
 				ID:       "gemini/" + model,
@@ -174,7 +174,7 @@ func (m *ModelManager) GetAvailableModels() []Model {
 	}
 
 	// Add mapped models
-	if m.cfg.PreferredProvider == config.ProviderOpenAI && m.cfg.OpenAIKey != "" {
+	if m.cfg.General.PreferredProvider == config.ProviderOpenAI && m.cfg.OpenAIKey != "" {
 		models = append(models, Model{
 			ID:       AnthropicModelHaiku,
 			Provider: config.ProviderOpenAI,
@@ -187,7 +187,7 @@ func (m *ModelManager) GetAvailableModels() []Model {
 		})
 	}
 
-	if m.cfg.PreferredProvider == config.ProviderGoogle && (m.cfg.GeminiAPIKey != "" || m.cfg.UseVertexAuth) {
+	if m.cfg.General.PreferredProvider == config.ProviderGoogle && (m.cfg.GeminiAPIKey != "" || m.cfg.Google.UseVertexAuth) {
 		models = append(models, Model{
 			ID:       AnthropicModelHaiku,
 			Provider: config.ProviderGoogle,

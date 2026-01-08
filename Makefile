@@ -1,4 +1,4 @@
-projectname?=go-template
+projectname?=llm-to-anthropic
 
 default: help
 
@@ -15,39 +15,43 @@ install: ## install golang binary
 	@go install -ldflags "-X main.version=$(shell git describe --abbrev=0 --tags)"
 
 .PHONY: run
-run: ## run the app
-	@go run -ldflags "-X main.version=$(shell git describe --abbrev=0 --tags)"  main.go
+run: ## run app
+	@go run -ldflags "-X main.version=$(shell git describe --abbrev=0 --tags)" main.go
 
 .PHONY: bootstrap
 bootstrap: ## install build deps
 	go generate -tags tools tools/tools.go
 
-PHONY: test
+.PHONY: test
 test: clean ## display test coverage
 	go test --cover -parallel=1 -v -coverprofile=coverage.out ./...
 	go tool cover -func=coverage.out | sort -rnk3
-	
-PHONY: clean
-clean: ## clean up environment
-	@rm -rf coverage.out dist/ $(projectname)
 
-PHONY: cover
+.PHONY: clean
+clean: ## clean up environment
+	@rm -rf coverage.out dist/ $(projectname) $(projectname).exe
+
+.PHONY: cover
 cover: ## display test coverage
 	go test -v -race $(shell go list ./... | grep -v /vendor/) -v -coverprofile=coverage.out
 	go tool cover -func=coverage.out
 
-PHONY: fmt
+.PHONY: fmt
 fmt: ## format go files
 	gofumpt -w .
 	gci write .
 
-PHONY: lint
+.PHONY: lint
 lint: ## lint go files
 	golangci-lint run -c .golang-ci.yml
 
-PHONY: release-test
+.PHONY: release-test
 release-test: ## test release
 	goreleaser release --rm-dist --snapshot --clean --skip-publish
+
+.PHONY: build-all
+build-all: ## build for all platforms
+	goreleaser build --snapshot --clean
 
 # .PHONY: pre-commit
 # pre-commit:	## run pre-commit hooks

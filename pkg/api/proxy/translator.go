@@ -3,7 +3,7 @@ package proxy
 import (
 	"io"
 
-	"github.com/nerdneilsfield/go-template/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
 )
 
 // ProviderClient interface defines the contract for backend provider clients

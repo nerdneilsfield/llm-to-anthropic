@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/nerdneilsfield/go-template/internal/config"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy/openai"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/openai"
 	"github.com/valyala/fasthttp"
 )
 

@@ -6,6 +6,10 @@ RUN addgroup -S app && adduser -S app -G app
 USER app
 
 WORKDIR /app
-COPY ${TARGETPLATFORM}/go-template /app/go-template
+COPY ${TARGETPLATFORM}/llm-to-anthropic /app/llm-to-anthropic
+COPY config.toml /app/config.toml
+COPY .env.example /app/.env.example
 
-ENTRYPOINT ["/app/go-template"]
+EXPOSE 8082
+
+ENTRYPOINT ["/app/llm-to-anthropic"]

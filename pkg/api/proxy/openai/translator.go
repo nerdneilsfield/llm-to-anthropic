@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nerdneilsfield/go-template/internal/config"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy/anthropic"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/anthropic"
 )
 
 // Translator implements Anthropic to OpenAI translation

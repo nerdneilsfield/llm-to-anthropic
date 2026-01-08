@@ -6,8 +6,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/nerdneilsfield/go-template/internal/config"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy/gemini"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/gemini"
 	"github.com/valyala/fasthttp"
 )
 
@@ -32,9 +32,9 @@ type Client struct {
 func NewClient(cfg *config.Config) *Client {
 	return &Client{
 		apiKey:        cfg.GeminiAPIKey,
-		useVertexAuth:  cfg.UseVertexAuth,
-		vertexProject:  cfg.VertexProject,
-		vertexLocation: cfg.VertexLocation,
+		useVertexAuth:  cfg.Google.UseVertexAuth,
+		vertexProject:  cfg.Google.VertexProject,
+		vertexLocation: cfg.Google.VertexLocation,
 		client: &fasthttp.Client{
 			MaxConnsPerHost: 100,
 			ReadTimeout:     120 * time.Second,

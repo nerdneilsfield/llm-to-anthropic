@@ -1,0 +1,50 @@
+# LLM API Proxy Configuration
+
+[server]
+# Server host (default: 0.0.0.0)
+host = "0.0.0.0"
+# Server port (default: 8082)
+port = 8082
+# Read timeout in seconds (default: 120)
+read_timeout = 120
+# Write timeout in seconds (default: 120)
+write_timeout = 120
+
+[general]
+# Preferred provider for unmapped models (default: "openai")
+# Options: "openai", "google", "anthropic"
+preferred_provider = "openai"
+
+# Enable verbose logging (default: false)
+verbose = false
+
+[models]
+# Default model mappings for Claude model names
+# When client requests "haiku", this model will be used
+small_model = "gpt-4.1-mini"
+
+# When client requests "sonnet", this model will be used
+big_model = "gpt-4.1"
+
+[google]
+# Use Vertex AI authentication instead of API key (default: false)
+use_vertex_auth = false
+
+# Vertex AI project ID (required if use_vertex_auth = true)
+vertex_project = ""
+
+# Vertex AI location (required if use_vertex_auth = true)
+vertex_location = ""
+
+[mappings]
+# Custom model mappings
+# Format: "client_model" = "provider_target_model"
+
+# Examples:
+# "claude-3-5-sonnet" = "openai/gpt-4o"
+# "claude-3-haiku" = "gemini/gemini-2.5-flash"
+# "my-custom-model" = "anthropic/claude-sonnet-4-20250514"
+
+# Prefix-based mappings
+# Keys starting with a provider prefix will route to that provider
+# Examples: "openai/*" → OpenAI, "gemini/*" → Gemini

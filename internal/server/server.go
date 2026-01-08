@@ -6,9 +6,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/nerdneilsfield/go-template/internal/config"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy/anthropic"
-	"github.com/nerdneilsfield/go-template/pkg/api/proxy"
+	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/anthropic"
+	"github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy"
 	"go.uber.org/zap"
 )
 
@@ -100,7 +100,7 @@ func (s *Server) handleReady(c *fiber.Ctx) error {
 		providers["openai"] = "not_configured"
 	}
 
-	if s.cfg.GeminiAPIKey != "" || s.cfg.UseVertexAuth {
+	if s.cfg.GeminiAPIKey != "" || s.cfg.Google.UseVertexAuth {
 		providers["google"] = "configured"
 	} else {
 		providers["google"] = "not_configured"

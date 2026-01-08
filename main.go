@@ -5,7 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nerdneilsfield/go-template/cmd"
+	"github.com/nerdneilsfield/llm-to-anthropic/cmd"
 	loggerPkg "github.com/nerdneilsfield/shlogin/pkg/logger"
 	"go.uber.org/zap"
 )
