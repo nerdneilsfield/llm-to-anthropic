@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"strings"
+	"bytes"
 
 	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
 	"github.com/valyala/fasthttp"
@@ -156,7 +158,85 @@ func (c *Client) IsConfigured() bool {
 }
 
 // SendStream sends a streaming request to Gemini
+
 func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io.ReadCloser, error) {
-	// TODO: Implement streaming
-	return nil, fmt.Errorf("streaming not implemented for fasthttp")
+	key := c.provider.ParsedAPIKey
+	if c.provider.IsBypass && len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	// Handle Vertex AI
+	if c.provider.UseVertexAuth {
+		if len(apiKey) > 0 && apiKey[0] != "" {
+			key = apiKey[0]
+		}
+	}
+
+	if key == "" && !c.provider.UseVertexAuth {
+		return nil, fmt.Errorf("Gemini API key not provided")
+	}
+
+	type streamableReq struct {
+		Contents         interface{} `json:"contents,omitempty"`
+		GenerationConfig interface{} `json:"generationConfig,omitempty"`
+		Stream           bool        `json:"stream,omitempty"`
+	}
+
+	streamable := streamableReq{Stream: true}
+
+	if m, ok := req.(map[string]interface{}); ok {
+		if v, ok := m["contents"]; ok {
+			streamable.Contents = v
+		}
+		if v, ok := m["generationConfig"]; ok {
+			streamable.GenerationConfig = v
+		}
+	}
+
+	body, err := json.Marshal(streamable)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := c.provider.BaseURL
+	if strings.Contains(url, "aiplatform.googleapis.com") {
+		url += fmt.Sprintf("/projects/%s/locations/%s/publishers/google/models/%s:streamGenerateContent",
+			c.provider.VertexProject, c.provider.VertexLocation, model)
+	} else {
+		url += "/v1beta/models/" + model + ":streamGenerateContent"
+	}
+
+	httpReq := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(httpReq)
+
+	httpReq.SetRequestURI(url)
+	httpReq.Header.SetMethod("POST")
+	httpReq.Header.SetContentType("application/json")
+	
+	if !c.provider.UseVertexAuth {
+		httpReq.Header.Set("x-goog-api-key", key)
+	} else if key != "" {
+		httpReq.Header.Set("Authorization", "Bearer "+key)
+	}
+	
+	httpReq.Header.Set("Accept", "text/event-stream")
+	httpReq.SetBody(body)
+
+	httpResp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(httpResp)
+
+	if err := c.client.Do(httpReq, httpResp); err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	status := httpResp.StatusCode()
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("Gemini API returned status %d: %s", status, httpResp.Body())
+	}
+
+	bodyCopy := make([]byte, len(httpResp.Body()))
+	copy(bodyCopy, httpResp.Body())
+
+	return io.NopCloser(bytes.NewReader(bodyCopy)), nil
 }
+

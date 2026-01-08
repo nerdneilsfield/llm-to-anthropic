@@ -2,7 +2,6 @@ package server
 
 import (
 	openai "github.com/nerdneilsfield/llm-to-anthropic/pkg/provider/openai"
-	"encoding/json"
 	anthropic_provider "github.com/nerdneilsfield/llm-to-anthropic/pkg/provider/anthropic"
 	gemini "github.com/nerdneilsfield/llm-to-anthropic/pkg/provider/gemini"
 	translators "github.com/nerdneilsfield/llm-to-anthropic/pkg/api/proxy/translators"
@@ -320,8 +319,9 @@ func (s *Server) translateRequest(req *anthropic.MessageRequest, model *proxy.Mo
 	case "openai":
 		return translators.TranslateAnthropicToOpenAI(req, model.Name)
 	case "anthropic":
-		// Anthropic format - pass through
-		return req, nil
+		return translators.TranslateAnthropicToAnthropic(req)
+	case "gemini":
+		return translators.TranslateAnthropicToGemini(req, model.Name)
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", model.Provider.Type)
 	}
@@ -350,21 +350,14 @@ func (s *Server) translateResponse(model *proxy.Model, resp []byte) (*anthropic.
 	case "openai":
 		return translators.TranslateOpenAIToAnthropic(resp)
 	case "anthropic":
-		// Anthropic format - parse directly
-		var anthropicResp anthropic.MessageResponse
-		if err := json.Unmarshal(resp, &anthropicResp); err != nil {
-			return nil, err
-		}
-		return &anthropicResp, nil
+		return translators.TranslateAnthropicToAnthropicResponse(resp)
+	case "gemini":
+		return translators.TranslateGeminiToAnthropic(resp)
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", model.Provider.Type)
 	}
 }
 
-func (s *Server) translateStream(model *proxy.Model, stream io.Reader, w io.Writer) error {
-	// Streaming translation (to be implemented)
-	return fmt.Errorf("streaming not implemented yet")
-}
 
 func (s *Server) getProviderClient(provider *config.Provider) proxy.ProviderClient {
 	switch provider.Type {
@@ -375,8 +368,19 @@ func (s *Server) getProviderClient(provider *config.Provider) proxy.ProviderClie
 	case "gemini":
 		return gemini.NewClient(provider)
 	default:
-		// Return a dummy client that will error
 		return openai.NewClient(provider)
+	}
+}
+func (s *Server) translateStream(model *proxy.Model, stream io.Reader, w io.Writer) error {
+	switch model.Provider.Type {
+	case "openai":
+		return translators.TranslateOpenAIStreamToAnthropicSSE(stream, w)
+	case "anthropic":
+		return translators.TranslateAnthropicStreamToAnthropicSSE(stream, w)
+	case "gemini":
+		return translators.TranslateGeminiStreamToAnthropicSSE(stream, w)
+	default:
+		return fmt.Errorf("unsupported provider type: %s", model.Provider.Type)
 	}
 }
 

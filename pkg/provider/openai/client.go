@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"strings"
+	"bytes"
+	"bufio"
 
 	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
 	"github.com/valyala/fasthttp"
@@ -128,7 +131,144 @@ func (c *Client) IsConfigured() bool {
 }
 
 // SendStream sends a streaming request to OpenAI
+
 func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io.ReadCloser, error) {
-	// TODO: Implement streaming
-	return nil, fmt.Errorf("streaming not implemented for fasthttp")
+	key := c.provider.ParsedAPIKey
+	if c.provider.IsBypass && len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	if key == "" && !c.provider.IsBypass {
+		return nil, fmt.Errorf("OpenAI API key not provided")
+	}
+
+	// Add stream=true to request
+	type streamableReq struct {
+		Model       string      `json:"model"`
+		Messages    interface{} `json:"messages"`
+		MaxTokens   int         `json:"max_tokens,omitempty"`
+		Temperature float64     `json:"temperature,omitempty"`
+		Stream      bool        `json:"stream"`
+	}
+
+	streamable := streamableReq{
+		Stream: true,
+	}
+
+	// Extract fields from original request
+	if m, ok := req.(map[string]interface{}); ok {
+		if v, ok := m["model"].(string); ok {
+			streamable.Model = v
+		}
+		if v, ok := m["messages"]; ok {
+			streamable.Messages = v
+		}
+		if v, ok := m["max_tokens"].(float64); ok {
+			streamable.MaxTokens = int(v)
+		}
+		if v, ok := m["temperature"].(float64); ok {
+			streamable.Temperature = v
+		}
+	}
+
+	if model != "" {
+		streamable.Model = model
+	}
+
+	body, err := json.Marshal(streamable)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := c.provider.BaseURL + ChatCompletionEndpoint
+	httpReq := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(httpReq)
+
+	httpReq.SetRequestURI(url)
+	httpReq.Header.SetMethod("POST")
+	httpReq.Header.SetContentType("application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+key)
+	httpReq.Header.Set("Accept", "text/event-stream")
+	httpReq.SetBody(body)
+
+	httpResp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(httpResp)
+
+	if err := c.client.Do(httpReq, httpResp); err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	status := httpResp.StatusCode()
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("OpenAI API returned status %d: %s", status, httpResp.Body())
+	}
+
+	bodyCopy := make([]byte, len(httpResp.Body()))
+	copy(bodyCopy, httpResp.Body())
+
+	return io.NopCloser(bytes.NewReader(bodyCopy)), nil
+}
+
+
+// ParseOpenAIStream parses OpenAI SSE stream
+func ParseOpenAIStream(r io.Reader) (<-chan *StreamChunk, <-chan error) {
+	chunks := make(chan *StreamChunk)
+	errs := make(chan error, 1)
+
+	go func() {
+		defer close(chunks)
+		defer close(errs)
+
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			line := scanner.Text()
+			
+			if line == "" || strings.HasPrefix(line, ":") {
+				continue
+			}
+
+			if !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+
+			data := strings.TrimPrefix(line, "data: ")
+			
+			if data == "[DONE]" {
+				break
+			}
+
+			var chunk StreamChunk
+			if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+				errs <- fmt.Errorf("failed to parse chunk: %w", err)
+				return
+			}
+
+			chunks <- &chunk
+		}
+
+		if err := scanner.Err(); err != nil {
+			errs <- fmt.Errorf("scanner error: %w", err)
+		}
+	}()
+
+	return chunks, errs
+}
+
+// StreamChunk represents an OpenAI streaming chunk
+type StreamChunk struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64   `json:"created"`
+	Model   string `json:"model"`
+	Choices []struct {
+		Index        int     `json:"index"`
+		Delta        Delta  `json:"delta"`
+		FinishReason *string `json:"finish_reason,omitempty"`
+	} `json:"choices"`
+}
+
+// Delta represents a delta in a stream chunk
+type Delta struct {
+	Role    string `json:"role,omitempty"`
+	Content string `json:"content,omitempty"`
 }

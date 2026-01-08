@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"bytes"
 
 	"github.com/nerdneilsfield/llm-to-anthropic/internal/config"
 	"github.com/valyala/fasthttp"
@@ -13,6 +14,7 @@ import (
 const (
 	// MessagesEndpoint is the messages endpoint
 	MessagesEndpoint = "/v1/messages"
+	ChatCompletionEndpoint = "/v1/messages"
 )
 
 // Client implements ProviderClient for Anthropic
@@ -130,7 +132,51 @@ func (c *Client) IsConfigured() bool {
 }
 
 // SendStream sends a streaming request to Anthropic
+
+
 func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io.ReadCloser, error) {
-	// TODO: Implement streaming
-	return nil, fmt.Errorf("streaming not implemented for fasthttp")
+	key := c.provider.ParsedAPIKey
+	if c.provider.IsBypass && len(apiKey) > 0 && apiKey[0] != "" {
+		key = apiKey[0]
+	}
+
+	if key == "" && !c.provider.IsBypass {
+		return nil, fmt.Errorf("Anthropic API key not provided")
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := c.provider.BaseURL + ChatCompletionEndpoint
+	httpReq := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(httpReq)
+
+	httpReq.SetRequestURI(url)
+	httpReq.Header.SetMethod("POST")
+	httpReq.Header.SetContentType("application/json")
+	httpReq.Header.Set("x-api-key", key)
+	httpReq.Header.Set("anthropic-version", "2023-06-01")
+	httpReq.Header.Set("Accept", "text/event-stream")
+	httpReq.SetBody(body)
+
+	httpResp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(httpResp)
+
+	if err := c.client.Do(httpReq, httpResp); err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	status := httpResp.StatusCode()
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("Anthropic API returned status %d: %s", status, httpResp.Body())
+	}
+
+	bodyCopy := make([]byte, len(httpResp.Body()))
+	copy(bodyCopy, httpResp.Body())
+
+	return io.NopCloser(bytes.NewReader(bodyCopy)), nil
 }
+
+
