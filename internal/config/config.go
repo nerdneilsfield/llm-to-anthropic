@@ -43,6 +43,7 @@ type GeneralConfig struct {
 // ModelsConfig represents model configuration from TOML
 type ModelsConfig struct {
 	SmallModel string `toml:"small_model"`
+	MediumModel string `toml:"medium_model"`
 	BigModel   string `toml:"big_model"`
 }
 
@@ -147,8 +148,11 @@ func setDefaults(cfg *Config) {
 	if cfg.Models.SmallModel == "" {
 		cfg.Models.SmallModel = "gpt-4.1-mini"
 	}
+	if cfg.Models.MediumModel == "" {
+		cfg.Models.MediumModel = "gpt-4.1"
+	}
 	if cfg.Models.BigModel == "" {
-		cfg.Models.BigModel = "gpt-4.1"
+		cfg.Models.BigModel = "gpt-4o"
 	}
 
 	// Initialize mappings if nil
@@ -213,6 +217,14 @@ func (c *Config) GetDefaultSmallModel() string {
 	return c.General.PreferredProvider.GetDefaultSmallModel()
 }
 
+// GetDefaultMediumModel returns default medium model for the preferred provider
+func (c *Config) GetDefaultMediumModel() string {
+	if c.Models.MediumModel != "" {
+		return c.Models.MediumModel
+	}
+	return c.General.PreferredProvider.GetDefaultMediumModel()
+}
+
 // IsConfigured returns true if at least one provider is configured
 // (either server-side key or client can provide key)
 func (c *Config) IsConfigured() bool {
@@ -235,6 +247,20 @@ func (p Provider) GetDefaultBigModel() string {
 		return "gemini-2.5-pro"
 	case ProviderAnthropic:
 		return "claude-sonnet-4-20250514"
+	default:
+		return ""
+	}
+}
+
+// GetDefaultMediumModel returns default medium model for a given provider
+func (p Provider) GetDefaultMediumModel() string {
+	switch p {
+	case ProviderOpenAI:
+		return "gpt-4o"
+	case ProviderGoogle:
+		return "gemini-2.0-flash-exp"
+	case ProviderAnthropic:
+		return "claude-3-5-sonnet-20241022"
 	default:
 		return ""
 	}

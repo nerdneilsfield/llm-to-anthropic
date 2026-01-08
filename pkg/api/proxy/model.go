@@ -13,6 +13,7 @@ const (
 	// Anthropic model names that need mapping
 	AnthropicModelHaiku  = "haiku"
 	AnthropicModelSonnet = "sonnet"
+	AnthropicModelOpus   = "opus"
 )
 
 // Model represents a model with its provider information
@@ -70,6 +71,14 @@ func (m *ModelManager) ParseModel(modelStr string) (*Model, error) {
 		}, nil
 
 	case AnthropicModelSonnet:
+		providerModel := m.getProviderMediumModel()
+		return &Model{
+			ID:       providerModel,
+			Provider: m.cfg.General.PreferredProvider,
+			Name:     strings.TrimPrefix(providerModel, m.cfg.General.PreferredProvider.GetPrefix()),
+		}, nil
+
+	case AnthropicModelOpus:
 		providerModel := m.getProviderBigModel()
 		return &Model{
 			ID:       providerModel,
@@ -115,6 +124,21 @@ func (m *ModelManager) getProviderBigModel() string {
 	}
 	// Use default for preferred provider
 	defaultModel := m.cfg.General.PreferredProvider.GetDefaultBigModel()
+	return m.cfg.General.PreferredProvider.GetPrefix() + defaultModel
+}
+
+// getProviderMediumModel returns the configured medium model with provider prefix
+func (m *ModelManager) getProviderMediumModel() string {
+	if m.cfg.Models.MediumModel != "" {
+		// If it already has a prefix, use as-is
+		if strings.Contains(m.cfg.Models.MediumModel, "/") {
+			return m.cfg.Models.MediumModel
+		}
+		// Otherwise, add the preferred provider's prefix
+		return m.cfg.General.PreferredProvider.GetPrefix() + m.cfg.Models.MediumModel
+	}
+	// Use default for preferred provider
+	defaultModel := m.cfg.General.PreferredProvider.GetDefaultMediumModel()
 	return m.cfg.General.PreferredProvider.GetPrefix() + defaultModel
 }
 

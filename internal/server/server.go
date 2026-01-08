@@ -55,7 +55,7 @@ func (s *Server) Start() error {
 	s.registerRoutes()
 
 	// Start server
-	addr := fmt.Sprintf("%s:%d", s.cfg.ServerHost, s.cfg.ServerPort)
+	addr := fmt.Sprintf("%s:%d", s.cfg.ServerHost(), s.cfg.ServerPort())
 	s.logger.Info("Starting server", zap.String("address", addr))
 	return s.app.Listen(addr)
 }

@@ -20,11 +20,19 @@ verbose = false
 
 [models]
 # Default model mappings for Claude model names
+# Mapping:
+# - "haiku"  → small_model  (fast, low cost)
+# - "sonnet" → medium_model (balanced)
+# - "opus"   → big_model    (most capable)
+
 # When client requests "haiku", this model will be used
 small_model = "gpt-4.1-mini"
 
 # When client requests "sonnet", this model will be used
-big_model = "gpt-4.1"
+medium_model = "gpt-4o"
+
+# When client requests "opus", this model will be used
+big_model = "gpt-4o"
 
 [google]
 # Use Vertex AI authentication instead of API key (default: false)
