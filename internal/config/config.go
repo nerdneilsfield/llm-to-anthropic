@@ -7,26 +7,16 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kelseyhightower/envconfig"
 )
 
 // Config holds application configuration
-// API keys come from environment variables, other settings from TOML file
 type Config struct {
-	// TOML Configuration
 	Server   ServerConfig   `toml:"server"`
-	General  GeneralConfig  `toml:"general"`
-	Models   ModelsConfig   `toml:"models"`
-	Google   GoogleConfig   `toml:"google"`
-	Mappings map[string]string `toml:"mappings"`
-
-	// Environment Variables (API Keys only)
-	AnthropicAPIKey string `envconfig:"ANTHROPIC_API_KEY" required:"false"`
-	OpenAIKey      string `envconfig:"OPENAI_API_KEY" required:"false"`
-	GeminiAPIKey   string `envconfig:"GEMINI_API_KEY" required:"false"`
+	Providers []Provider    `toml:"providers"`
+	Mappings  ModelMappings `toml:"mappings"`
 }
 
-// ServerConfig represents server configuration from TOML
+// ServerConfig represents server configuration
 type ServerConfig struct {
 	Host         string `toml:"host"`
 	Port         int    `toml:"port"`
@@ -34,39 +24,27 @@ type ServerConfig struct {
 	WriteTimeout int    `toml:"write_timeout"`
 }
 
-// GeneralConfig represents general configuration from TOML
-type GeneralConfig struct {
-	PreferredProvider Provider `toml:"preferred_provider"`
-	Verbose          bool     `toml:"verbose"`
+// Provider represents an LLM provider configuration
+type Provider struct {
+	Name         string   `toml:"name"`
+	Type         string   `toml:"type"`
+	BaseURL      string   `toml:"api_base_url"`
+	APIKey       string   `toml:"api_key"`
+	Models       []string `toml:"models"`
+	UseVertexAuth bool     `toml:"use_vertex_auth,omitempty"`
+	VertexProject string   `toml:"vertex_project,omitempty"`
+	VertexLocation string  `toml:"vertex_location,omitempty"`
+
+	// Runtime fields (not in TOML)
+	ParsedAPIKey   string
+	IsBypass      bool
 }
 
-// ModelsConfig represents model configuration from TOML
-type ModelsConfig struct {
-	SmallModel string `toml:"small_model"`
-	MediumModel string `toml:"medium_model"`
-	BigModel   string `toml:"big_model"`
-}
+// ModelMappings holds model alias mappings
+type ModelMappings map[string]string
 
-// GoogleConfig represents Google-specific configuration from TOML
-type GoogleConfig struct {
-	UseVertexAuth  bool   `toml:"use_vertex_auth"`
-	VertexProject  string `toml:"vertex_project"`
-	VertexLocation string `toml:"vertex_location"`
-}
-
-// Provider represents LLM provider
-type Provider string
-
-const (
-	ProviderOpenAI    Provider = "openai"
-	ProviderGoogle    Provider = "google"
-	ProviderAnthropic Provider = "anthropic"
-)
-
-// Load loads configuration from TOML file and environment variables
-// It first tries to load config.toml, then loads env vars
+// Load loads configuration from TOML file
 func Load() (*Config, error) {
-	// Load TOML configuration
 	configPath := getConfigPath()
 	configFile, err := os.ReadFile(configPath)
 	if err != nil {
@@ -78,12 +56,12 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Set defaults if not specified
+	// Set defaults
 	setDefaults(cfg)
 
-	// Load environment variables (API keys only)
-	if err := envconfig.Process("", cfg); err != nil {
-		return nil, fmt.Errorf("failed to load environment variables: %w", err)
+	// Parse API keys
+	if err := cfg.ParseAPIKeys(); err != nil {
+		return nil, fmt.Errorf("failed to parse API keys: %w", err)
 	}
 
 	// Validate configuration
@@ -94,38 +72,61 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// ParseAPIKeys parses API keys for all providers
+func (c *Config) ParseAPIKeys() error {
+	for i := range c.Providers {
+		key, bypass := parseAPIKey(c.Providers[i].APIKey)
+		c.Providers[i].ParsedAPIKey = key
+		c.Providers[i].IsBypass = bypass
+	}
+	return nil
+}
+
+// parseAPIKey parses an API key configuration
+func parseAPIKey(apiKey string) (string, bool) {
+	// Check for bypass/forward
+	if apiKey == "bypass" || apiKey == "forward" {
+		return "", true
+	}
+
+	// Check for environment variable
+	if strings.HasPrefix(apiKey, "env:") {
+		envKey := strings.TrimPrefix(apiKey, "env:")
+		value := os.Getenv(envKey)
+		return value, false
+	}
+
+	// Direct value
+	return apiKey, false
+}
+
 // getConfigPath returns the path to the configuration file
-// Searches in this order:
-// 1. CONFIG_PATH environment variable
-// 2. config.toml in current directory
-// 3. .llm-to-anthropic.toml in home directory
 func getConfigPath() string {
-	// Check if CONFIG_PATH is set
+	// 1. Check CONFIG_PATH environment variable
 	if path := os.Getenv("CONFIG_PATH"); path != "" {
 		return path
 	}
 
-	// Try config.toml in current directory
+	// 2. Check config.toml in current directory
 	if _, err := os.Stat("config.toml"); err == nil {
 		return "config.toml"
 	}
 
-	// Try .llm-to-anthropic.toml in home directory
-	homeDir, err := os.UserHomeDir()
+	// 3. Check .llm-to-anthropic.toml in home directory
+	home, err := os.UserHomeDir()
 	if err == nil {
-		configPath := filepath.Join(homeDir, ".llm-to-anthropic.toml")
+		configPath := filepath.Join(home, ".llm-to-anthropic.toml")
 		if _, err := os.Stat(configPath); err == nil {
 			return configPath
 		}
 	}
 
-	// Fallback to config.toml
+	// Default to config.toml
 	return "config.toml"
 }
 
 // setDefaults sets default values for configuration
 func setDefaults(cfg *Config) {
-	// Server defaults
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = "0.0.0.0"
 	}
@@ -139,25 +140,8 @@ func setDefaults(cfg *Config) {
 		cfg.Server.WriteTimeout = 120
 	}
 
-	// General defaults
-	if cfg.General.PreferredProvider == "" {
-		cfg.General.PreferredProvider = ProviderOpenAI
-	}
-
-	// Models defaults
-	if cfg.Models.SmallModel == "" {
-		cfg.Models.SmallModel = "gpt-4.1-mini"
-	}
-	if cfg.Models.MediumModel == "" {
-		cfg.Models.MediumModel = "gpt-4.1"
-	}
-	if cfg.Models.BigModel == "" {
-		cfg.Models.BigModel = "gpt-4o"
-	}
-
-	// Initialize mappings if nil
 	if cfg.Mappings == nil {
-		cfg.Mappings = make(map[string]string)
+		cfg.Mappings = make(ModelMappings)
 	}
 }
 
@@ -165,155 +149,70 @@ func setDefaults(cfg *Config) {
 func (c *Config) Validate() error {
 	// Validate server configuration
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
-		return fmt.Errorf("server port must be between 1 and 65535")
+		return fmt.Errorf("invalid server port: %d", c.Server.Port)
 	}
 
-	// Validate provider
-	if !isValidProvider(c.General.PreferredProvider) {
-		return fmt.Errorf("invalid preferred provider: %s", c.General.PreferredProvider)
-	}
-
-	// Validate Google configuration
-	if c.Google.UseVertexAuth {
-		if c.Google.VertexProject == "" {
-			return fmt.Errorf("vertex_project is required when use_vertex_auth is true")
+	// Validate providers
+	providerNames := make(map[string]bool)
+	for i, provider := range c.Providers {
+		if provider.Name == "" {
+			return fmt.Errorf("provider %d: name is required", i)
 		}
-		if c.Google.VertexLocation == "" {
-			return fmt.Errorf("vertex_location is required when use_vertex_auth is true")
+		if providerNames[provider.Name] {
+			return fmt.Errorf("duplicate provider name: %s", provider.Name)
+		}
+		providerNames[provider.Name] = true
+
+		if provider.Type == "" {
+			return fmt.Errorf("provider %s: type is required", provider.Name)
+		}
+
+		if provider.BaseURL == "" {
+			return fmt.Errorf("provider %s: api_base_url is required", provider.Name)
+		}
+
+		// Validate vertex auth configuration
+		if provider.UseVertexAuth {
+			if provider.VertexProject == "" {
+				return fmt.Errorf("provider %s: vertex_project is required when use_vertex_auth is true", provider.Name)
+			}
+			if provider.VertexLocation == "" {
+				return fmt.Errorf("provider %s: vertex_location is required when use_vertex_auth is true", provider.Name)
+			}
 		}
 	}
 
 	return nil
 }
 
-// ServerHost returns the server host
-func (c *Config) ServerHost() string {
+// GetProviderByName returns a provider by name
+func (c *Config) GetProviderByName(name string) (*Provider, bool) {
+	for i := range c.Providers {
+		if c.Providers[i].Name == name {
+			return &c.Providers[i], true
+		}
+	}
+	return nil, false
+}
+
+// ParseModelMapping parses a model mapping string
+// Returns provider name and model name
+// Example: "openai/gpt-4.1-mini" → ("openai", "gpt-4.1-mini")
+// Example: "ollama/custom/model:free" → ("ollama", "custom/model:free")
+func ParseModelMapping(mapping string) (string, string) {
+	parts := strings.SplitN(mapping, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return "", mapping
+}
+
+// GetHost returns the server host
+func (c *Config) GetHost() string {
 	return c.Server.Host
 }
 
-// ServerPort returns the server port
-func (c *Config) ServerPort() int {
+// GetPort returns the server port
+func (c *Config) GetPort() int {
 	return c.Server.Port
-}
-
-// Verbose returns whether verbose logging is enabled
-func (c *Config) Verbose() bool {
-	return c.General.Verbose
-}
-
-// GetDefaultBigModel returns the default big model for the preferred provider
-func (c *Config) GetDefaultBigModel() string {
-	if c.Models.BigModel != "" {
-		return c.Models.BigModel
-	}
-	return c.General.PreferredProvider.GetDefaultBigModel()
-}
-
-// GetDefaultSmallModel returns the default small model for the preferred provider
-func (c *Config) GetDefaultSmallModel() string {
-	if c.Models.SmallModel != "" {
-		return c.Models.SmallModel
-	}
-	return c.General.PreferredProvider.GetDefaultSmallModel()
-}
-
-// GetDefaultMediumModel returns default medium model for the preferred provider
-func (c *Config) GetDefaultMediumModel() string {
-	if c.Models.MediumModel != "" {
-		return c.Models.MediumModel
-	}
-	return c.General.PreferredProvider.GetDefaultMediumModel()
-}
-
-// IsConfigured returns true if at least one provider is configured
-// (either server-side key or client can provide key)
-func (c *Config) IsConfigured() bool {
-	// If any server-side API key is configured, return true
-	if c.OpenAIKey != "" || c.GeminiAPIKey != "" || c.AnthropicAPIKey != "" {
-		return true
-	}
-
-	// If no server-side keys, we can still work if clients provide keys
-	// This is a valid configuration for a pure proxy
-	return true
-}
-
-// GetDefaultBigModel returns the default big model for a given provider
-func (p Provider) GetDefaultBigModel() string {
-	switch p {
-	case ProviderOpenAI:
-		return "gpt-4.1"
-	case ProviderGoogle:
-		return "gemini-2.5-pro"
-	case ProviderAnthropic:
-		return "claude-sonnet-4-20250514"
-	default:
-		return ""
-	}
-}
-
-// GetDefaultMediumModel returns default medium model for a given provider
-func (p Provider) GetDefaultMediumModel() string {
-	switch p {
-	case ProviderOpenAI:
-		return "gpt-4o"
-	case ProviderGoogle:
-		return "gemini-2.0-flash-exp"
-	case ProviderAnthropic:
-		return "claude-3-5-sonnet-20241022"
-	default:
-		return ""
-	}
-}
-
-// GetDefaultSmallModel returns the default small model for a given provider
-func (p Provider) GetDefaultSmallModel() string {
-	switch p {
-	case ProviderOpenAI:
-		return "gpt-4.1-mini"
-	case ProviderGoogle:
-		return "gemini-2.5-flash"
-	case ProviderAnthropic:
-		return "claude-haiku-4-20250514"
-	default:
-		return ""
-	}
-}
-
-// GetPrefix returns the prefix for a given provider
-func (p Provider) GetPrefix() string {
-	switch p {
-	case ProviderOpenAI:
-		return "openai/"
-	case ProviderGoogle:
-		return "gemini/"
-	case ProviderAnthropic:
-		return "anthropic/"
-	default:
-		return ""
-	}
-}
-
-// ParseProvider parses a provider string to Provider type
-func ParseProvider(s string) (Provider, error) {
-	switch strings.ToLower(s) {
-	case "openai":
-		return ProviderOpenAI, nil
-	case "google", "gemini":
-		return ProviderGoogle, nil
-	case "anthropic", "claude":
-		return ProviderAnthropic, nil
-	default:
-		return "", fmt.Errorf("unknown provider: %s", s)
-	}
-}
-
-// isValidProvider checks if a provider is valid
-func isValidProvider(p Provider) bool {
-	switch p {
-	case ProviderOpenAI, ProviderGoogle, ProviderAnthropic:
-		return true
-	default:
-		return false
-	}
 }

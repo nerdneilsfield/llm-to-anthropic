@@ -1,58 +1,119 @@
-# LLM API Proxy Configuration
-
+# Server Configuration
 [server]
-# Server host (default: 0.0.0.0)
 host = "0.0.0.0"
-# Server port (default: 8082)
 port = 8082
-# Read timeout in seconds (default: 120)
 read_timeout = 120
-# Write timeout in seconds (default: 120)
 write_timeout = 120
 
-[general]
-# Preferred provider for unmapped models (default: "openai")
-# Options: "openai", "google", "anthropic"
-preferred_provider = "openai"
+# ============================================
+# Providers Configuration
+# ============================================
 
-# Enable verbose logging (default: false)
-verbose = false
+# OpenAI Official API - Use environment variable
+[[providers]]
+name = "openai"
+type = "openai"
+api_base_url = "https://api.openai.com/v1"
+api_key = "env:OPENAI_API_KEY"
+models = [
+    "gpt-4.1-mini",
+    "gpt-4o",
+    "gpt-4o",
+]
 
-[models]
-# Default model mappings for Claude model names
-# Mapping:
-# - "haiku"  → small_model  (fast, low cost)
-# - "sonnet" → medium_model (balanced)
-# - "opus"   → big_model    (most capable)
+# OpenAI Azure - Direct API key
+[[providers]]
+name = "azure"
+type = "openai"
+api_base_url = "https://your-azure-openai.openai.azure.com/v1"
+api_key = "sk-azure-xxx"
+models = [
+    "gpt-4.1-mini",
+    "gpt-4o",
+]
 
-# When client requests "haiku", this model will be used
-small_model = "gpt-4.1-mini"
+# Local Ollama - Bypass (forward client key)
+[[providers]]
+name = "ollama"
+type = "openai"
+api_base_url = "http://localhost:11434/v1"
+api_key = "bypass"
+models = [
+    "llama3.2:1b",
+    "llama3.2:3b",
+    "llama3.2:7b",
+]
 
-# When client requests "sonnet", this model will be used
-medium_model = "gpt-4o"
+# Anthropic Official API - Use environment variable
+[[providers]]
+name = "anthropic"
+type = "anthropic"
+api_base_url = "https://api.anthropic.com"
+api_key = "env:ANTHROPIC_API_KEY"
+models = [
+    "claude-haiku-4-20250514",
+    "claude-3-5-sonnet-20241022",
+    "claude-sonnet-4-20250514",
+]
 
-# When client requests "opus", this model will be used
-big_model = "gpt-4o"
+# Google Gemini Official API - Direct API key
+[[providers]]
+name = "gemini"
+type = "gemini"
+api_base_url = "https://generativelanguage.googleapis.com/v1beta"
+api_key = "AIzaSyD-xxx"
+models = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-2.5-pro",
+]
 
-[google]
-# Use Vertex AI authentication instead of API key (default: false)
-use_vertex_auth = false
+# Google Vertex AI - Bypass
+[[providers]]
+name = "vertex"
+type = "gemini"
+api_base_url = "https://us-central1-aiplatform.googleapis.com/v1"
+api_key = "forward"
+use_vertex_auth = true
+vertex_project = "your-project-id"
+vertex_location = "us-central1"
+models = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-2.5-pro",
+]
 
-# Vertex AI project ID (required if use_vertex_auth = true)
-vertex_project = ""
+# DeepSeek - Bypass (client provides key)
+[[providers]]
+name = "deepseek"
+type = "openai"
+api_base_url = "https://api.deepseek.com/v1"
+api_key = "bypass"
+models = [
+    "deepseek-chat",
+    "deepseek-coder",
+]
 
-# Vertex AI location (required if use_vertex_auth = true)
-vertex_location = ""
+# Local Custom API - Bypass
+[[providers]]
+name = "local"
+type = "openai"
+api_base_url = "http://localhost:8000/v1"
+api_key = "bypass"
+models = [
+    "custom/model:free",
+]
+
+# ============================================
+# Model Mappings
+# ============================================
 
 [mappings]
-# Custom model mappings
-# Format: "client_model" = "provider_target_model"
-
-# Examples:
-# "claude-3-5-sonnet" = "openai/gpt-4o"
-# "claude-3-haiku" = "gemini/gemini-2.5-flash"
-# "my-custom-model" = "anthropic/claude-sonnet-4-20250514"
-
-# Prefix-based mappings
-# Keys starting with a provider prefix will route to that provider
-# Examples: "openai/*" → OpenAI, "gemini/*" → Gemini
+"haiku" = "ollama/llama3.2:1b"
+"sonnet" = "ollama/llama3.2:3b"
+"opus" = "ollama/llama3.2:7b"
+"custom" = "ollama/custom/model:free"
+"claude" = "anthropic/claude-3-5-sonnet-20241022"
+"gpt" = "openai/gpt-4o"
+"local" = "ollama/llama3.2:3b"
+"deepseek" = "deepseek/deepseek-chat"
