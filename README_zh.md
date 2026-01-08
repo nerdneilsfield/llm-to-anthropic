@@ -20,6 +20,13 @@
 
 ---
 
+<div align="right">
+  <a href="README.md">🇺🇸 English Version</a>
+</div>
+
+
+---
+
 ## ✨ 特性
 
 - 🎯 **多提供商支持** - 配置任意数量的 LLM 提供商（OpenAI、Anthropic、Google Gemini、Ollama 等）

@@ -20,6 +20,13 @@
 
 ---
 
+<div align="right">
+  <a href="README_zh.md">🇨🇳 中文版</a>
+</div>
+
+
+---
+
 ## ✨ Features
 
 - 🎯 **Multi-Provider Support** - Configure any number of LLM providers (OpenAI, Anthropic, Google Gemini, Ollama, etc.)
