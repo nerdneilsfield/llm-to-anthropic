@@ -55,13 +55,8 @@ func runProxy(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// Override with command line flags
-	if verbose {
-		cfg.General.Verbose = true
-	}
-
 	// Initialize logger
-	logger, err := loggerPkg.GetLogger(cfg.Verbose())
+	logger, err := loggerPkg.GetLogger(verbose)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
@@ -70,23 +65,28 @@ func runProxy(cmd *cobra.Command, args []string) {
 
 	// Log configuration
 	logger.Info("Starting LLM API proxy",
-		zap.String("provider", string(cfg.General.PreferredProvider)),
-		zap.Int("port", cfg.ServerPort()),
-		zap.Bool("verbose", cfg.Verbose()),
+		zap.Int("port", cfg.GetPort()),
+		zap.Int("providers", len(cfg.Providers)),
+		zap.Bool("verbose", verbose),
 	)
 
-	if cfg.Verbose() {
+	if verbose {
 		logger.Debug("Configuration loaded",
-			zap.String("preferred_provider", string(cfg.General.PreferredProvider)),
-			zap.String("big_model", cfg.Models.BigModel),
-			zap.String("small_model", cfg.Models.SmallModel),
-			zap.Bool("use_vertex_auth", cfg.Google.UseVertexAuth),
-			zap.String("vertex_project", cfg.Google.VertexProject),
-			zap.String("vertex_location", cfg.Google.VertexLocation),
-			zap.Bool("openai_configured", cfg.OpenAIKey != ""),
-			zap.Bool("gemini_configured", cfg.GeminiAPIKey != ""),
-			zap.Bool("anthropic_configured", cfg.AnthropicAPIKey != ""),
+			zap.String("host", cfg.GetHost()),
+			zap.Int("port", cfg.GetPort()),
+			zap.Int("mappings", len(cfg.Mappings)),
 		)
+
+		// Log provider status
+		for _, provider := range cfg.Providers {
+			logger.Debug("Provider configuration",
+				zap.String("name", provider.Name),
+				zap.String("type", provider.Type),
+				zap.String("base_url", provider.BaseURL),
+				zap.Bool("bypass", provider.IsBypass),
+				zap.Int("models", len(provider.Models)),
+			)
+		}
 	}
 
 	// Create server

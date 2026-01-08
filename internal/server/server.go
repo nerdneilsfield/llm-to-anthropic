@@ -55,7 +55,7 @@ func (s *Server) Start() error {
 	s.registerRoutes()
 
 	// Start server
-	addr := fmt.Sprintf("%s:%d", s.cfg.ServerHost(), s.cfg.ServerPort())
+	addr := fmt.Sprintf("%s:%d", s.cfg.GetHost(), s.cfg.GetPort())
 	s.logger.Info("Starting server", zap.String("address", addr))
 	return s.app.Listen(addr)
 }
@@ -94,38 +94,17 @@ func (s *Server) handleReady(c *fiber.Ctx) error {
 	// Check provider status
 	providers := fiber.Map{}
 
-	if s.cfg.OpenAIKey != "" {
-		providers["openai"] = "configured"
-	} else {
-		providers["openai"] = "not_configured"
-	}
-
-	if s.cfg.GeminiAPIKey != "" || s.cfg.Google.UseVertexAuth {
-		providers["google"] = "configured"
-	} else {
-		providers["google"] = "not_configured"
-	}
-
-	if s.cfg.AnthropicAPIKey != "" {
-		providers["anthropic"] = "configured"
-	} else {
-		providers["anthropic"] = "not_configured"
-	}
-
-	status["providers"] = providers
-
-	// Check if at least one provider is configured
-	readyCount := 0
-	for _, v := range providers {
-		if v == "configured" {
-			readyCount++
+	for _, provider := range s.cfg.Providers {
+		if provider.ParsedAPIKey != "" || provider.IsBypass {
+			providers[provider.Name] = "configured"
+		} else {
+			providers[provider.Name] = "not_configured"
 		}
 	}
 
-	if readyCount == 0 {
-		status["status"] = "not_ready"
-		return c.Status(503).JSON(status)
-	}
+	status["providers"] = providers
+	status["total_providers"] = len(s.cfg.Providers)
+	status["total_mappings"] = len(s.cfg.Mappings)
 
 	return c.JSON(status)
 }
