@@ -165,7 +165,6 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 		key = apiKey[0]
 	}
 
-	// Handle Vertex AI
 	if c.provider.UseVertexAuth {
 		if len(apiKey) > 0 && apiKey[0] != "" {
 			key = apiKey[0]
@@ -176,24 +175,19 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 		return nil, fmt.Errorf("Gemini API key not provided")
 	}
 
-	type streamableReq struct {
-		Contents         interface{} `json:"contents,omitempty"`
-		GenerationConfig interface{} `json:"generationConfig,omitempty"`
-		Stream           bool        `json:"stream,omitempty"`
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	streamable := streamableReq{Stream: true}
-
-	if m, ok := req.(map[string]interface{}); ok {
-		if v, ok := m["contents"]; ok {
-			streamable.Contents = v
-		}
-		if v, ok := m["generationConfig"]; ok {
-			streamable.GenerationConfig = v
-		}
+	var reqMap map[string]interface{}
+	if err := json.Unmarshal(reqBytes, &reqMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal request: %w", err)
 	}
 
-	body, err := json.Marshal(streamable)
+	reqMap["stream"] = true
+
+	body, err := json.Marshal(reqMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -239,4 +233,5 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 
 	return io.NopCloser(bytes.NewReader(bodyCopy)), nil
 }
+
 

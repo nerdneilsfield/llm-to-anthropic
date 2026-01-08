@@ -142,40 +142,25 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 		return nil, fmt.Errorf("OpenAI API key not provided")
 	}
 
-	// Add stream=true to request
-	type streamableReq struct {
-		Model       string      `json:"model"`
-		Messages    interface{} `json:"messages"`
-		MaxTokens   int         `json:"max_tokens,omitempty"`
-		Temperature float64     `json:"temperature,omitempty"`
-		Stream      bool        `json:"stream"`
+	// Serialize request
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	streamable := streamableReq{
-		Stream: true,
+	// Parse to map and add stream=true
+	var reqMap map[string]interface{}
+	if err := json.Unmarshal(reqBytes, &reqMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal request: %w", err)
 	}
 
-	// Extract fields from original request
-	if m, ok := req.(map[string]interface{}); ok {
-		if v, ok := m["model"].(string); ok {
-			streamable.Model = v
-		}
-		if v, ok := m["messages"]; ok {
-			streamable.Messages = v
-		}
-		if v, ok := m["max_tokens"].(float64); ok {
-			streamable.MaxTokens = int(v)
-		}
-		if v, ok := m["temperature"].(float64); ok {
-			streamable.Temperature = v
-		}
-	}
+	reqMap["stream"] = true
 
 	if model != "" {
-		streamable.Model = model
+		reqMap["model"] = model
 	}
 
-	body, err := json.Marshal(streamable)
+	body, err := json.Marshal(reqMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -208,6 +193,7 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 
 	return io.NopCloser(bytes.NewReader(bodyCopy)), nil
 }
+
 
 
 // ParseOpenAIStream parses OpenAI SSE stream

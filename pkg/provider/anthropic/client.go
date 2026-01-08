@@ -144,7 +144,23 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 		return nil, fmt.Errorf("Anthropic API key not provided")
 	}
 
-	body, err := json.Marshal(req)
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	var reqMap map[string]interface{}
+	if err := json.Unmarshal(reqBytes, &reqMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal request: %w", err)
+	}
+
+	reqMap["stream"] = true
+
+	if model != "" {
+		reqMap["model"] = model
+	}
+
+	body, err := json.Marshal(reqMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -178,5 +194,6 @@ func (c *Client) SendStream(model string, req interface{}, apiKey ...string) (io
 
 	return io.NopCloser(bytes.NewReader(bodyCopy)), nil
 }
+
 
 
