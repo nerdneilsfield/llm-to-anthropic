@@ -54,7 +54,7 @@ dockers_v2:
     ids:
       - llm-to-anthropic
     images:
-      - nerdneilsfield/llm-to-anthropic
+      - nerdneils/llm-to-anthropic
       - ghcr.io/nerdneilsfield/llm-to-anthropic
     tags:
       - "{{ .Tag }}"
