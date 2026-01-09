@@ -54,10 +54,11 @@ dockers_v2:
     ids:
       - llm-to-anthropic
     images:
-      - nerdneilsfield/llm-to-anthropic:{{ .Tag }}
-      - nerdneilsfield/llm-to-anthropic:latest
-      - ghcr.io/nerdneilsfield/llm-to-anthropic:{{ .Tag }}
-      - ghcr.io/nerdneilsfield/llm-to-anthropic:latest
+      - nerdneilsfield/llm-to-anthropic
+      - ghcr.io/nerdneilsfield/llm-to-anthropic
+    tags:
+      - "{{ .Tag }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
     platforms:
       - linux/amd64
       - linux/arm64
