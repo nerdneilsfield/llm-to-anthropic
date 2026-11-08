@@ -41,6 +41,19 @@
 
 ## 🚀 Quick Start
 
+### Homebrew / Scoop
+
+```bash
+# macOS / Linux
+brew install --cask nerdneilsfield/apps/llm-to-anthropic
+```
+
+```powershell
+# Windows
+scoop bucket add nerdneilsfield https://github.com/nerdneilsfield/homebrew-apps
+scoop install nerdneilsfield/llm-to-anthropic
+```
+
 ### Installation
 
 Choose one of the following installation methods:
