@@ -107,3 +107,33 @@ changelog:
       order: 400
     - title: Other work
       order: 9999
+
+# Publish to the nerdneilsfield/homebrew-apps tap and Scoop bucket.
+homebrew_casks:
+  - name: llm-to-anthropic
+    homepage: https://github.com/nerdneilsfield/llm-to-anthropic
+    description: Convert an LLM endpoint to the Anthropic API
+    binaries:
+      - llm-to-anthropic
+    directory: Casks
+    repository:
+      owner: nerdneilsfield
+      name: homebrew-apps
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/llm-to-anthropic"]
+          end
+
+scoops:
+  - name: llm-to-anthropic
+    homepage: https://github.com/nerdneilsfield/llm-to-anthropic
+    description: Convert an LLM endpoint to the Anthropic API
+    license: MIT
+    directory: bucket
+    repository:
+      owner: nerdneilsfield
+      name: homebrew-apps
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
